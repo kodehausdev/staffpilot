@@ -1,0 +1,50 @@
+version: 1.0
+runtime: python311
+
+build:
+  commands:
+    build:
+      - pip install -r requirements.txt -t .
+
+run:
+  runtime-version: "3.11"
+  command: uvicorn main:app --host 0.0.0.0 --port 8080
+  network:
+    port: 8080
+    env: APP_PORT
+  env:
+    - name: SUPABASE_URL
+      value-source:
+        secrets-manager:
+          name: staffpilot/backend
+          key: SUPABASE_URL
+    - name: SUPABASE_SERVICE_ROLE_KEY
+      value-source:
+        secrets-manager:
+          name: staffpilot/backend
+          key: SUPABASE_SERVICE_ROLE_KEY
+    - name: GEMINI_API_KEY
+      value-source:
+        secrets-manager:
+          name: staffpilot/backend
+          key: GEMINI_API_KEY
+    - name: TWILIO_ACCOUNT_SID
+      value-source:
+        secrets-manager:
+          name: staffpilot/backend
+          key: TWILIO_ACCOUNT_SID
+    - name: TWILIO_AUTH_TOKEN
+      value-source:
+        secrets-manager:
+          name: staffpilot/backend
+          key: TWILIO_AUTH_TOKEN
+    - name: TWILIO_WHATSAPP_NUMBER
+      value-source:
+        secrets-manager:
+          name: staffpilot/backend
+          key: TWILIO_WHATSAPP_NUMBER
+    - name: SECRET_KEY
+      value-source:
+        secrets-manager:
+          name: staffpilot/backend
+          key: SECRET_KEY

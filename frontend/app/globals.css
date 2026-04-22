@@ -1,0 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+:root {
+  --sp-bg: #0f1117;
+  --sp-surface: #161b27;
+  --sp-border: #1f2937;
+  --sp-border-light: #2d3748;
+  --sp-text: #e8eaf0;
+  --sp-muted: #6b7280;
+  --sp-accent: #10b981;     /* Nigerian green */
+  --sp-accent-dim: #064e3b;
+  --sp-amber: #f59e0b;
+  --sp-red: #ef4444;
+  --sp-blue: #3b82f6;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--sp-bg);
+  color: var(--sp-text);
+}
+
+.font-mono {
+  font-family: 'DM Mono', monospace;
+}
+
+/* Bento grid card */
+.bento {
+  @apply bg-sp-surface border border-sp-border rounded-xl p-5;
+}
+
+/* Luxury bento — rim light border */
+.bento-luxury {
+  @apply bg-sp-surface rounded-xl p-5;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.bento-title {
+  @apply text-xs font-semibold text-sp-muted uppercase tracking-widest;
+}
+
+/* Shared form input */
+.input {
+  @apply w-full bg-sp-bg border border-sp-border rounded-lg px-3.5 py-2.5 text-sm text-sp-text placeholder-sp-muted focus:outline-none focus:border-sp-accent transition;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--sp-bg); }
+::-webkit-scrollbar-thumb { background: var(--sp-border-light); border-radius: 2px; }

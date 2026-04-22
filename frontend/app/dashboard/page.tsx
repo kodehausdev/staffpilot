@@ -1,0 +1,289 @@
+'use client'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase-server'
+import { useTenant } from '@/lib/use-tenant'
+import { useAuth } from '@/lib/auth-context'
+import { Badge, Spinner } from '@/components/ui'
+import { formatCurrency, STATUS_COLORS, LEAVE_TYPE_COLORS } from '@/lib/utils'
+import type { LeaveRequest, Payslip } from '@/lib/supabase'
+import { ArrowRight, UserPlus, Upload, Plus, CreditCard, CalendarOff, ChevronDown } from 'lucide-react'
+
+type DeptCount = { department: string; count: number }
+
+function greeting() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  return 'Good evening'
+}
+
+export default function DashboardPage() {
+  const { tenantId, plan, loading: tenantLoading } = useTenant()
+  const { tenantAdmin, user } = useAuth()
+  const supabase = createClient()
+  const router   = useRouter()
+
+  const [stats, setStats]                   = useState({ employees: 0, pending: 0, approved: 0, docs: 0 })
+  const [recentLeave, setRecentLeave]       = useState<LeaveRequest[]>([])
+  const [recentPayslips, setRecentPayslips] = useState<Payslip[]>([])
+  const [deptBreakdown, setDeptBreakdown]   = useState<DeptCount[]>([])
+  const [loading, setLoading]               = useState(true)
+  const [deptExpanded, setDeptExpanded]     = useState(false)
+
+  useEffect(() => {
+    if (!tenantId) return
+    load()
+  }, [tenantId])
+
+  async function load() {
+    try {
+      const [empRes, leaveRes, payslipRes, docsRes] = await Promise.all([
+        supabase.from('employees').select('id, department, is_active').eq('tenant_id', tenantId),
+        supabase.from('leave_requests').select('*, employees(name, phone)').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(5),
+        supabase.from('payslips').select('*, employees(name)').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(4),
+        supabase.from('hr_documents').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
+      ])
+
+      const emps   = empRes.data ?? []
+      const active = emps.filter(e => e.is_active)
+      const leave  = leaveRes.data ?? []
+
+      const deptMap: Record<string, number> = {}
+      active.forEach(e => {
+        const d = e.department || 'Unassigned'
+        deptMap[d] = (deptMap[d] || 0) + 1
+      })
+
+      setStats({
+        employees: active.length,
+        pending:   leave.filter(l => l.status === 'pending').length,
+        approved:  leave.filter(l => l.status === 'approved').length,
+        docs:      docsRes.count ?? 0,
+      })
+      setRecentLeave(leave)
+      setRecentPayslips(payslipRes.data ?? [])
+      setDeptBreakdown(
+        Object.entries(deptMap)
+          .map(([department, count]) => ({ department, count }))
+          .sort((a, b) => b.count - a.count)
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (tenantLoading || loading) return <Spinner />
+
+  const firstName   = user?.email?.split('@')[0] ?? ''
+  const companyName = tenantAdmin?.tenants?.name ?? '—'
+  const visibleDepts = deptExpanded ? deptBreakdown : deptBreakdown.slice(0, 4)
+
+  return (
+    <div className="flex flex-col gap-4 h-full">
+
+      {/* ── Slim header ─────────────────────────────────────────── */}
+      <div className="flex items-baseline justify-between">
+        <div>
+          <p className="text-xs text-sp-muted mb-0.5">{greeting()}{firstName ? `, ${firstName}` : ''}</p>
+          <h1 className="text-lg font-semibold text-sp-text tracking-tight leading-none">Overview</h1>
+        </div>
+        <p className="text-xs text-sp-muted">{companyName} · {plan} plan</p>
+      </div>
+
+      {/* ── Horizontal stat strip ───────────────────────────────── */}
+      <div className="bento-luxury flex divide-x divide-white/[0.06] py-3.5 px-0 overflow-hidden">
+        {[
+          { label: 'Active staff',   value: stats.employees },
+          { label: 'Pending leave',  value: stats.pending,  muted: stats.pending === 0 },
+          { label: 'Approved leave', value: stats.approved  },
+          { label: 'HR documents',   value: stats.docs      },
+        ].map(({ label, value, muted }) => (
+          <div key={label} className="flex-1 flex flex-col items-center justify-center px-4">
+            <p className={`text-2xl font-semibold tracking-tight leading-none ${muted ? 'text-sp-muted' : 'text-sp-text'}`}>
+              {value}
+            </p>
+            <p className="text-[11px] text-sp-muted mt-1 uppercase tracking-wider">{label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Main: 2/3 live data + 1/3 tools ────────────────────── */}
+      <div className="grid grid-cols-3 gap-4 flex-1 items-start">
+
+        {/* LEFT — live data */}
+        <div className="col-span-2 flex flex-col gap-4">
+
+          {/* Leave requests */}
+          <div className="bento-luxury">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-sp-text uppercase tracking-widest">Leave requests</span>
+                {/* Bot active pulse — green only here */}
+                <span className="flex items-center gap-1 text-[11px] text-sp-muted">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sp-accent opacity-60" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-sp-accent" />
+                  </span>
+                  Bot active
+                </span>
+              </div>
+              {recentLeave.length > 0 && (
+                <button onClick={() => router.push('/dashboard/leave')}
+                  className="text-xs text-sp-muted hover:text-sp-text flex items-center gap-1 transition-colors">
+                  View all <ArrowRight size={11} />
+                </button>
+              )}
+            </div>
+
+            {recentLeave.length === 0 ? (
+              <div className="flex items-center gap-3 py-4 px-1">
+                <CalendarOff size={16} className="text-sp-border shrink-0" />
+                <p className="text-sm text-sp-muted">
+                  No leave requests yet — employees trigger these via WhatsApp
+                </p>
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-sp-muted border-b border-white/[0.06]">
+                    <th className="pb-2 font-medium">Employee</th>
+                    <th className="pb-2 font-medium">Type</th>
+                    <th className="pb-2 font-medium">Dates</th>
+                    <th className="pb-2 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.04]">
+                  {recentLeave.map(lr => {
+                    const emp = lr.employees as any
+                    return (
+                      <tr key={lr.id} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="py-2.5 text-sp-text">{emp?.name || emp?.phone || '—'}</td>
+                        <td className="py-2.5">
+                          <Badge className={`${LEAVE_TYPE_COLORS[lr.leave_type] ?? ''} capitalize`}>
+                            {lr.leave_type}
+                          </Badge>
+                        </td>
+                        <td className="py-2.5 text-sp-muted text-xs whitespace-nowrap">
+                          {lr.start_date} → {lr.end_date}
+                        </td>
+                        <td className="py-2.5">
+                          <Badge className={STATUS_COLORS[lr.status] ?? ''}>{lr.status}</Badge>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Recent payslips */}
+          <div className="bento-luxury">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold text-sp-text uppercase tracking-widest">Recent payslips</span>
+              {recentPayslips.length > 0 && (
+                <button onClick={() => router.push('/dashboard/payslips')}
+                  className="text-xs text-sp-muted hover:text-sp-text flex items-center gap-1 transition-colors">
+                  View all <ArrowRight size={11} />
+                </button>
+              )}
+            </div>
+
+            {recentPayslips.length === 0 ? (
+              <div className="flex items-center gap-3 py-4 px-1">
+                <CreditCard size={16} className="text-sp-border shrink-0" />
+                <p className="text-sm text-sp-muted">No payslips added yet</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-white/[0.04]">
+                {recentPayslips.map(ps => {
+                  const emp = ps.employees as any
+                  return (
+                    <div key={ps.id} className="flex items-center justify-between py-2.5 hover:bg-white/[0.02] transition-colors rounded">
+                      <div>
+                        <p className="text-sm font-medium text-sp-text">{emp?.name || '—'}</p>
+                        <p className="text-xs text-sp-muted">{ps.month}</p>
+                      </div>
+                      <div className="text-right">
+                        {/* Green only on net pay */}
+                        <p className="text-sm font-semibold text-sp-accent">{formatCurrency(ps.net_pay)}</p>
+                        <p className="text-xs text-sp-muted">gross {formatCurrency(ps.gross_pay)}</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT — tools & stats */}
+        <div className="col-span-1 flex flex-col gap-4">
+
+          {/* Quick actions */}
+          <div className="bento-luxury">
+            <p className="text-xs font-semibold text-sp-text uppercase tracking-widest mb-3">Quick actions</p>
+            <div className="space-y-0.5">
+              {[
+                { icon: <UserPlus size={13} />,   label: 'Add employee',  href: '/dashboard/employees' },
+                { icon: <Upload size={13} />,     label: 'Upload HR doc', href: '/dashboard/docs'      },
+                { icon: <Plus size={13} />,       label: 'Add payslip',   href: '/dashboard/payslips'  },
+                { icon: <CreditCard size={13} />, label: 'View payslips', href: '/dashboard/payslips'  },
+              ].map(({ icon, label, href }) => (
+                <button
+                  key={label}
+                  onClick={() => router.push(href)}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-sp-muted hover:text-sp-text hover:bg-white/[0.03] transition-all group text-left"
+                >
+                  {/* Icons muted — not green */}
+                  <span className="text-sp-muted group-hover:text-sp-text transition-colors">{icon}</span>
+                  {label}
+                  <ArrowRight size={10} className="ml-auto opacity-0 group-hover:opacity-30 transition-opacity" />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Staff by dept — compact */}
+          <div className="bento-luxury">
+            <p className="text-xs font-semibold text-sp-text uppercase tracking-widest mb-3">Staff by dept</p>
+            {deptBreakdown.length === 0 ? (
+              <p className="text-xs text-sp-muted">No employees yet</p>
+            ) : (
+              <div className="space-y-2.5">
+                {visibleDepts.map(({ department, count }) => (
+                  <div key={department} className="flex items-center gap-2.5">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-sp-muted truncate">{department}</span>
+                        <span className="text-sp-muted ml-2 shrink-0">{count}</span>
+                      </div>
+                      {/* Bars muted — not green */}
+                      <div className="h-0.5 bg-white/[0.06] rounded-full">
+                        <div
+                          className="h-full bg-sp-muted/50 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.round((count / deptBreakdown[0].count) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {deptBreakdown.length > 4 && (
+                  <button
+                    onClick={() => setDeptExpanded(e => !e)}
+                    className="flex items-center gap-1 text-xs text-sp-muted hover:text-sp-text transition-colors pt-0.5"
+                  >
+                    <ChevronDown size={11} className={`transition-transform duration-200 ${deptExpanded ? 'rotate-180' : ''}`} />
+                    {deptExpanded ? 'Show less' : `+${deptBreakdown.length - 4} more`}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+        </div>
+      </div>
+    </div>
+  )
+}
