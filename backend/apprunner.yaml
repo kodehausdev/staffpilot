@@ -4,7 +4,7 @@ runtime: python311
 build:
   commands:
     build:
-      - pip install -r requirements.txt -t .
+      - pip install -r requirements.txt
 
 run:
   runtime-version: "3.11"
@@ -28,23 +28,33 @@ run:
         secrets-manager:
           name: staffpilot/backend
           key: GEMINI_API_KEY
-    - name: TWILIO_ACCOUNT_SID
+    - name: WHATSAPP_ACCESS_TOKEN
       value-source:
         secrets-manager:
           name: staffpilot/backend
-          key: TWILIO_ACCOUNT_SID
-    - name: TWILIO_AUTH_TOKEN
+          key: WHATSAPP_ACCESS_TOKEN
+    - name: WHATSAPP_PHONE_NUMBER_ID
       value-source:
         secrets-manager:
           name: staffpilot/backend
-          key: TWILIO_AUTH_TOKEN
-    - name: TWILIO_WHATSAPP_NUMBER
+          key: WHATSAPP_PHONE_NUMBER_ID
+    - name: WHATSAPP_BUSINESS_ACCOUNT_ID
       value-source:
         secrets-manager:
           name: staffpilot/backend
-          key: TWILIO_WHATSAPP_NUMBER
+          key: WHATSAPP_BUSINESS_ACCOUNT_ID
+    - name: WHATSAPP_VERIFY_TOKEN
+      value-source:
+        secrets-manager:
+          name: staffpilot/backend
+          key: WHATSAPP_VERIFY_TOKEN
     - name: SECRET_KEY
       value-source:
         secrets-manager:
           name: staffpilot/backend
           key: SECRET_KEY
+    - name: FRONTEND_URL
+      value-source:
+        secrets-manager:
+          name: staffpilot/backend
+          key: FRONTEND_URL

@@ -38,16 +38,18 @@ export default function DashboardPage() {
 
   async function load() {
     try {
-      const [empRes, leaveRes, payslipRes, docsRes] = await Promise.all([
+      const [empRes, leaveRes, allLeaveRes, payslipRes, docsRes] = await Promise.all([
         supabase.from('employees').select('id, department, is_active').eq('tenant_id', tenantId),
-        supabase.from('leave_requests').select('*, employees(name, phone)').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(5),
-        supabase.from('payslips').select('*, employees(name)').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(4),
+        supabase.from('leave_requests').select('*, employees!employee_id(name, phone)').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(5),
+        supabase.from('leave_requests').select('status').eq('tenant_id', tenantId),
+        supabase.from('payslips').select('*, employees(name)').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(3),
         supabase.from('hr_documents').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
       ])
 
-      const emps   = empRes.data ?? []
-      const active = emps.filter(e => e.is_active)
-      const leave  = leaveRes.data ?? []
+      const emps     = empRes.data ?? []
+      const active   = emps.filter(e => e.is_active)
+      const leave    = leaveRes.data ?? []
+      const allLeave = allLeaveRes.data ?? []
 
       const deptMap: Record<string, number> = {}
       active.forEach(e => {
@@ -57,8 +59,8 @@ export default function DashboardPage() {
 
       setStats({
         employees: active.length,
-        pending:   leave.filter(l => l.status === 'pending').length,
-        approved:  leave.filter(l => l.status === 'approved').length,
+        pending:   allLeave.filter(l => l.status === 'pending').length,
+        approved:  allLeave.filter(l => l.status === 'approved').length,
         docs:      docsRes.count ?? 0,
       })
       setRecentLeave(leave)
@@ -111,15 +113,12 @@ export default function DashboardPage() {
       {/* ── Main: 2/3 live data + 1/3 tools ────────────────────── */}
       <div className="grid grid-cols-3 gap-4 flex-1 items-start">
 
-        {/* LEFT — live data */}
-        <div className="col-span-2 flex flex-col gap-4">
-
-          {/* Leave requests */}
+        {/* LEFT — leave requests (full height) */}
+        <div className="col-span-2">
           <div className="bento-luxury">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-sp-text uppercase tracking-widest">Leave requests</span>
-                {/* Bot active pulse — green only here */}
                 <span className="flex items-center gap-1 text-[11px] text-sp-muted">
                   <span className="relative flex h-1.5 w-1.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sp-accent opacity-60" />
@@ -158,16 +157,16 @@ export default function DashboardPage() {
                     const emp = lr.employees as any
                     return (
                       <tr key={lr.id} className="hover:bg-white/[0.02] transition-colors">
-                        <td className="py-2.5 text-sp-text">{emp?.name || emp?.phone || '—'}</td>
-                        <td className="py-2.5">
+                        <td className="py-2 text-sp-text">{emp?.name || emp?.phone || '—'}</td>
+                        <td className="py-2">
                           <Badge className={`${LEAVE_TYPE_COLORS[lr.leave_type] ?? ''} capitalize`}>
                             {lr.leave_type}
                           </Badge>
                         </td>
-                        <td className="py-2.5 text-sp-muted text-xs whitespace-nowrap">
+                        <td className="py-2 text-sp-muted text-xs whitespace-nowrap">
                           {lr.start_date} → {lr.end_date}
                         </td>
-                        <td className="py-2.5">
+                        <td className="py-2">
                           <Badge className={STATUS_COLORS[lr.status] ?? ''}>{lr.status}</Badge>
                         </td>
                       </tr>
@@ -177,48 +176,9 @@ export default function DashboardPage() {
               </table>
             )}
           </div>
-
-          {/* Recent payslips */}
-          <div className="bento-luxury">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold text-sp-text uppercase tracking-widest">Recent payslips</span>
-              {recentPayslips.length > 0 && (
-                <button onClick={() => router.push('/dashboard/payslips')}
-                  className="text-xs text-sp-muted hover:text-sp-text flex items-center gap-1 transition-colors">
-                  View all <ArrowRight size={11} />
-                </button>
-              )}
-            </div>
-
-            {recentPayslips.length === 0 ? (
-              <div className="flex items-center gap-3 py-4 px-1">
-                <CreditCard size={16} className="text-sp-border shrink-0" />
-                <p className="text-sm text-sp-muted">No payslips added yet</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-white/[0.04]">
-                {recentPayslips.map(ps => {
-                  const emp = ps.employees as any
-                  return (
-                    <div key={ps.id} className="flex items-center justify-between py-2.5 hover:bg-white/[0.02] transition-colors rounded">
-                      <div>
-                        <p className="text-sm font-medium text-sp-text">{emp?.name || '—'}</p>
-                        <p className="text-xs text-sp-muted">{ps.month}</p>
-                      </div>
-                      <div className="text-right">
-                        {/* Green only on net pay */}
-                        <p className="text-sm font-semibold text-sp-accent">{formatCurrency(ps.net_pay)}</p>
-                        <p className="text-xs text-sp-muted">gross {formatCurrency(ps.gross_pay)}</p>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
         </div>
 
-        {/* RIGHT — tools & stats */}
+        {/* RIGHT — tools, payslips & dept */}
         <div className="col-span-1 flex flex-col gap-4">
 
           {/* Quick actions */}
@@ -236,7 +196,6 @@ export default function DashboardPage() {
                   onClick={() => router.push(href)}
                   className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-sp-muted hover:text-sp-text hover:bg-white/[0.03] transition-all group text-left"
                 >
-                  {/* Icons muted — not green */}
                   <span className="text-sp-muted group-hover:text-sp-text transition-colors">{icon}</span>
                   {label}
                   <ArrowRight size={10} className="ml-auto opacity-0 group-hover:opacity-30 transition-opacity" />
@@ -245,7 +204,44 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Staff by dept — compact */}
+          {/* Recent payslips */}
+          <div className="bento-luxury">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold text-sp-text uppercase tracking-widest">Recent payslips</span>
+              {recentPayslips.length > 0 && (
+                <button onClick={() => router.push('/dashboard/payslips')}
+                  className="text-xs text-sp-muted hover:text-sp-text flex items-center gap-1 transition-colors">
+                  View all <ArrowRight size={11} />
+                </button>
+              )}
+            </div>
+            {recentPayslips.length === 0 ? (
+              <div className="flex items-center gap-2 py-2 px-1">
+                <CreditCard size={14} className="text-sp-border shrink-0" />
+                <p className="text-xs text-sp-muted">No payslips added yet</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-white/[0.04]">
+                {recentPayslips.map(ps => {
+                  const emp = ps.employees as any
+                  return (
+                    <div key={ps.id} className="flex items-center justify-between py-2 hover:bg-white/[0.02] transition-colors rounded">
+                      <div className="min-w-0 mr-2">
+                        <p className="text-xs font-medium text-sp-text truncate">{emp?.name || '—'}</p>
+                        <p className="text-[11px] text-sp-muted">{ps.month}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs font-semibold text-sp-accent">{formatCurrency(ps.net_pay)}</p>
+                        <p className="text-[11px] text-sp-muted">gross {formatCurrency(ps.gross_pay)}</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Staff by dept */}
           <div className="bento-luxury">
             <p className="text-xs font-semibold text-sp-text uppercase tracking-widest mb-3">Staff by dept</p>
             {deptBreakdown.length === 0 ? (
@@ -259,7 +255,6 @@ export default function DashboardPage() {
                         <span className="text-sp-muted truncate">{department}</span>
                         <span className="text-sp-muted ml-2 shrink-0">{count}</span>
                       </div>
-                      {/* Bars muted — not green */}
                       <div className="h-0.5 bg-white/[0.06] rounded-full">
                         <div
                           className="h-full bg-sp-muted/50 rounded-full transition-all duration-500"

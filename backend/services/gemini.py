@@ -1,26 +1,27 @@
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from config import get_settings
 
-_configured = False
+_client: genai.Client | None = None
 
 
-def _setup():
-    global _configured
-    if not _configured:
-        genai.configure(api_key=get_settings().gemini_api_key)
-        _configured = True
+def _get_client() -> genai.Client:
+    global _client
+    if _client is None:
+        _client = genai.Client(api_key=get_settings().gemini_api_key)
+    return _client
 
 
 def generate(prompt: str, system: str = None, temperature: float = 0.3) -> str:
     """Generate a response from Gemini Flash."""
-    _setup()
-    model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
-        system_instruction=system or "You are a helpful HR assistant. Be concise and professional.",
-    )
-    response = model.generate_content(
-        prompt,
-        generation_config=genai.GenerationConfig(temperature=temperature),
+    client = _get_client()
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            system_instruction=system or "You are a helpful HR assistant. Be concise and professional.",
+            temperature=temperature,
+        ),
     )
     return response.text.strip()
 
@@ -30,7 +31,7 @@ def classify_intent(message: str) -> str:
     Classify a WhatsApp message into a flow intent.
     Returns one of: leave_request | hr_qa | payslip | onboarding | greeting | unknown
     """
-    _setup()
+    client = _get_client()
     prompt = f"""Classify this employee WhatsApp message into exactly one of these intents:
 leave_request, hr_qa, payslip, onboarding, greeting, unknown
 
@@ -46,10 +47,10 @@ Reply with ONLY the intent label, nothing else.
 
 Message: "{message}"
 """
-    model = genai.GenerativeModel("gemini-1.5-flash")
-    response = model.generate_content(
-        prompt,
-        generation_config=genai.GenerationConfig(temperature=0.0),
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt,
+        config=types.GenerateContentConfig(temperature=0.0),
     )
     intent = response.text.strip().lower()
     valid = {"leave_request", "hr_qa", "payslip", "onboarding", "greeting", "unknown"}
@@ -57,22 +58,22 @@ Message: "{message}"
 
 
 def embed_text(text: str) -> list[float]:
-    """Generate embedding using Google text-embedding-004."""
-    _setup()
-    result = genai.embed_content(
-        model="models/text-embedding-004",
-        content=text,
-        task_type="retrieval_query",
+    """Generate embedding for a query using text-embedding-004."""
+    client = _get_client()
+    result = client.models.embed_content(
+        model="text-embedding-004",
+        contents=text,
+        config=types.EmbedContentConfig(task_type="RETRIEVAL_QUERY"),
     )
-    return result["embedding"]
+    return result.embeddings[0].values
 
 
 def embed_document_chunk(text: str) -> list[float]:
     """Embed a document chunk for storage."""
-    _setup()
-    result = genai.embed_content(
-        model="models/text-embedding-004",
-        content=text,
-        task_type="retrieval_document",
+    client = _get_client()
+    result = client.models.embed_content(
+        model="text-embedding-004",
+        contents=text,
+        config=types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT"),
     )
-    return result["embedding"]
+    return result.embeddings[0].values

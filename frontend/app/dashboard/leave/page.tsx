@@ -27,11 +27,13 @@ export default function LeavePage() {
   async function load() {
     setLoading(true)
     try {
-      const { data } = await supabase
+      console.log('[leave] tenantId:', tenantId)
+      const { data, error } = await supabase
         .from('leave_requests')
-        .select('*, employees(name, phone, department)')
+        .select('*, employees!employee_id(name, phone, department)')
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
+      console.log('[leave] data:', data, 'error:', error)
       setRequests(data ?? [])
     } finally {
       setLoading(false)
