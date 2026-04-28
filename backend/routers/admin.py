@@ -218,6 +218,52 @@ def delete_doc(doc_id: str):
     return {"ok": True}
 
 
+# ─── Payslip broadcast ───────────────────────────────────────────────────────
+
+class PayslipBroadcast(BaseModel):
+    tenant_id: str
+    month: str   # "April"
+    year: int
+
+
+@router.post("/broadcast/payslips", dependencies=[Depends(verify_admin)])
+def broadcast_payslips(body: PayslipBroadcast):
+    sb = get_supabase()
+
+    slips = (
+        sb.table("payslips")
+        .select("*, employees(name, phone)")
+        .eq("tenant_id", body.tenant_id)
+        .eq("month", body.month)
+        .eq("year", body.year)
+        .execute()
+    ).data or []
+
+    sent, failed = 0, 0
+    for slip in slips:
+        emp = slip.get("employees") or {}
+        phone = emp.get("phone")
+        if not phone:
+            failed += 1
+            continue
+        name  = (emp.get("name") or "").split()[0] or "there"
+        gross = slip.get("gross_pay") or 0
+        net   = slip.get("net_pay")   or 0
+        msg = (
+            f"💚 {name}, your {body.month} {body.year} salary don land!\n\n"
+            f"Gross: ₦{gross:,.0f}\n"
+            f"Net:   ₦{net:,.0f}\n\n"
+            f"Any question? Just ask me here 🤝"
+        )
+        try:
+            send_message(phone, msg)
+            sent += 1
+        except Exception:
+            failed += 1
+
+    return {"sent": sent, "failed": failed, "total": len(slips)}
+
+
 # ─── Broadcast message ────────────────────────────────────────────────────────
 
 class BroadcastMsg(BaseModel):
