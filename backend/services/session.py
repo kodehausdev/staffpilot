@@ -48,7 +48,13 @@ def update_session(
 
 def clear_session(employee_id: str) -> None:
     """Reset after a flow completes."""
-    update_session(employee_id, flow=None, step=None, context={})
+    sb = get_supabase()
+    sb.table("sessions").update({
+        "current_flow": None,
+        "flow_step":    None,
+        "context":      {},
+        "updated_at":   "now()",
+    }).eq("employee_id", employee_id).execute()
 
 
 def update_context(employee_id: str, key: str, value) -> dict:

@@ -4,7 +4,7 @@ Meta WhatsApp Cloud API webhook.
 GET  /webhook  → verification handshake
 POST /webhook  → incoming messages
 """
-from fastapi import APIRouter, Request, HTTPException, Query
+from fastapi import APIRouter, Request, HTTPException, Query, BackgroundTasks
 from db.supabase_client import get_supabase
 from services import session as session_svc
 from services import leave, qa, payslip, onboarding
@@ -38,17 +38,26 @@ def verify_webhook(
 
 
 @router.post("/webhook")
-async def receive_message(request: Request):
+async def receive_message(request: Request, background_tasks: BackgroundTasks):
     body = await request.json()
-    print("INCOMING:", body)  # ADD THIS LINE
     messages = parse_webhook(body)
-    print("PARSED:", messages)  # AND THIS
     for msg in messages:
-        await _handle_message(msg["from"], msg["to"], msg["text"])
+        background_tasks.add_task(_handle_message, msg["from"], msg["to"], msg["text"])
     return {"status": "ok"}
 
 
 async def _handle_message(from_phone: str, to_number_id: str, text: str):
+    try:
+        await _process_message(from_phone, to_number_id, text)
+    except Exception as exc:
+        print(f"[webhook] Unhandled error for {from_phone}: {exc}")
+        try:
+            send_message(from_phone, "Something went wrong on our end. Please try again in a moment.")
+        except Exception:
+            pass
+
+
+async def _process_message(from_phone: str, to_number_id: str, text: str):
     text = text.strip()
 
     tenant = _get_tenant_by_number_id(to_number_id)
@@ -70,11 +79,19 @@ async def _handle_message(from_phone: str, to_number_id: str, text: str):
         return
 
     if current_flow == "leave_request":
+        if text.lower() == "leave":
+            session_svc.update_session(employee["id"], flow="leave_request", step="type", context={})
+            sess = {"flow_step": "type", "context": {}}
         leave.handle(employee, sess, text)
         return
 
     if current_flow == "onboarding":
         onboarding.handle(employee, sess, text)
+        return
+
+    _GRATITUDE = {"thanks", "thank you", "ty", "10q", "thx", "👍", "🙏", "ok thanks", "ok thank you", "noted", "noted thanks"}
+    if text.lower().strip("!. ") in _GRATITUDE:
+        send_message(from_phone, "No wahala! Anything else I can help with?")
         return
 
     intent = classify_intent(text)
@@ -104,8 +121,12 @@ async def _handle_message(from_phone: str, to_number_id: str, text: str):
         else:
             onboarding.handle(employee, sess, text)
 
-    else:
+    elif len(text.split()) >= 3:
         qa.handle(employee, text)
+
+    else:
+        name = employee.get("name") or "there"
+        send_message(from_phone, GREETING_MSG.format(name=name))
 
 
 def _get_tenant_by_number_id(phone_number_id: str) -> dict | None:

@@ -15,13 +15,26 @@ LEAVE_TYPES = {
     "5": "unpaid",
 }
 
-STEPS = ["type", "start_date", "end_date", "reason", "confirm"]
+ESCAPE_WORDS = {"hi", "hello", "hey", "menu", "back", "cancel", "stop", "exit", "restart", "start"}
+
+MAIN_MENU = (
+    "No problem! Here's what I can help you with:\n\n"
+    "• *Leave requests* — type 'leave'\n"
+    "• *HR policy questions* — just ask\n"
+    "• *Payslip info* — type 'payslip'\n\n"
+    "What do you need?"
+)
 
 
 def handle(employee: dict, session: dict, message: str) -> None:
     step = session.get("flow_step") or "type"
     ctx = session.get("context") or {}
     phone = employee["phone"]
+
+    if step != "type" and message.strip().lower() in ESCAPE_WORDS:
+        clear_session(employee["id"])
+        send_message(phone, MAIN_MENU)
+        return
 
     if step == "type":
         _ask_type(phone, employee["id"])
@@ -32,7 +45,7 @@ def handle(employee: dict, session: dict, message: str) -> None:
             send_message(phone, "Please reply with a number 1–5.")
             return
         update_context(employee["id"], "leave_type", LEAVE_TYPES[choice])
-        update_session(employee["id"], step="start_date")
+        update_session(employee["id"], step="end_date")
         send_message(phone, "What is your start date? (format: DD/MM/YYYY)")
 
     elif step == "end_date":
@@ -45,7 +58,7 @@ def handle(employee: dict, session: dict, message: str) -> None:
             send_message(phone, "Start date can't be in the past. Try again.")
             return
         update_context(employee["id"], "start_date", str(start))
-        update_session(employee["id"], step="end_date")
+        update_session(employee["id"], step="reason")
         send_message(phone, "What is your end date? (format: DD/MM/YYYY)")
 
     elif step == "reason":
@@ -63,12 +76,12 @@ def handle(employee: dict, session: dict, message: str) -> None:
             send_message(
                 phone,
                 f"You only have {employee['leave_balance']} leave days remaining "
-                f"but requested {days} days. Please adjust your dates."
+                f"but requested {days} days. Please adjust your end date, or type 'back' to start over."
             )
             return
         update_context(employee["id"], "end_date", str(end))
         update_context(employee["id"], "days", days)
-        update_session(employee["id"], step="reason")
+        update_session(employee["id"], step="confirm")
         send_message(phone, f"That's {days} day(s). What's the reason? (or type 'skip')")
 
     elif step == "confirm":
@@ -98,6 +111,12 @@ def _ask_type(phone: str, employee_id: str) -> None:
 
 
 def _submit_request(employee: dict, ctx: dict, phone: str) -> None:
+    required = ("leave_type", "start_date", "end_date", "days")
+    if not all(k in ctx for k in required):
+        clear_session(employee["id"])
+        send_message(phone, MAIN_MENU)
+        return
+
     sb = get_supabase()
 
     # Insert leave request

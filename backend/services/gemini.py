@@ -36,12 +36,15 @@ def classify_intent(message: str) -> str:
 leave_request, hr_qa, payslip, onboarding, greeting, unknown
 
 Rules:
-- leave_request: asking to take time off, annual leave, sick leave, absence
-- hr_qa: questions about company policy, rules, entitlements, procedures
+- leave_request: employee is REQUESTING to take time off ("I want leave", "can I take sick leave", "apply for annual leave")
+- hr_qa: questions about company policy, rules, entitlements, or procedures — including questions about leave policy, notice periods, allowances, disciplinary rules
 - payslip: asking about salary, payslip, payment, deductions
 - onboarding: new employee setup, first day, documents to submit
 - greeting: hi, hello, good morning, how are you
 - unknown: anything else
+
+Key distinction: "What is the notice period for sick leave?" is hr_qa (policy question), NOT leave_request.
+"I want to take sick leave" is leave_request (an actual request).
 
 Reply with ONLY the intent label, nothing else.
 
@@ -58,22 +61,18 @@ Message: "{message}"
 
 
 def embed_text(text: str) -> list[float]:
-    """Generate embedding for a query using text-embedding-004."""
-    client = _get_client()
-    result = client.models.embed_content(
-        model="text-embedding-004",
+    result = _get_client().models.embed_content(
+        model="gemini-embedding-001",
         contents=text,
-        config=types.EmbedContentConfig(task_type="RETRIEVAL_QUERY"),
+        config=types.EmbedContentConfig(task_type="RETRIEVAL_QUERY", output_dimensionality=768),
     )
     return result.embeddings[0].values
 
 
 def embed_document_chunk(text: str) -> list[float]:
-    """Embed a document chunk for storage."""
-    client = _get_client()
-    result = client.models.embed_content(
-        model="text-embedding-004",
+    result = _get_client().models.embed_content(
+        model="gemini-embedding-001",
         contents=text,
-        config=types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT"),
+        config=types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT", output_dimensionality=768),
     )
     return result.embeddings[0].values

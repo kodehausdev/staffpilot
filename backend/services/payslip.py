@@ -28,8 +28,12 @@ def handle(employee: dict, message: str) -> None:
     result = query.limit(1).execute()
 
     if not result.data:
-        msg = f"No payslip found" + (f" for {month}" if month else "") + "."
-        send_message(phone, msg + " Contact HR if you think this is an error.")
+        if month:
+            send_message(phone, f"Abeg, I no see any payslip for {month} on your account. "
+                                f"If you think something's off, reach your HR admin to sort it.")
+        else:
+            send_message(phone, "I no see any payslip on your account yet 😭 "
+                                "If salary should don enter, abeg ping HR admin — they'll check it fast.")
         clear_session(employee["id"])
         return
 
