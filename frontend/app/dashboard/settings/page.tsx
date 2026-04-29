@@ -1,10 +1,11 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import { useTenant } from '@/lib/use-tenant'
 import { useAuth } from '@/lib/auth-context'
 import { Button, Badge, PageHeader, Spinner } from '@/components/ui'
-import { Save, MessageSquare, CreditCard } from 'lucide-react'
+import { Save, MessageSquare, CreditCard, CheckCircle2 } from 'lucide-react'
 
 const PLAN_STYLES: Record<string, string> = {
   starter:    'bg-sp-border text-sp-muted',
@@ -21,7 +22,9 @@ const PLAN_LIMITS: Record<string, { staff: number; price: string }> = {
 export default function SettingsPage() {
   const { tenantAdmin, user }       = useAuth()
   const { tenantId, plan, loading: tenantLoading } = useTenant()
-  const supabase = createClient()
+  const supabase     = createClient()
+  const searchParams = useSearchParams()
+  const router       = useRouter()
 
   const [name, setName]         = useState('')
   const [waNumber, setWaNumber] = useState('')
@@ -29,6 +32,24 @@ export default function SettingsPage() {
   const [saved, setSaved]       = useState(false)
   const [error, setError]       = useState('')
   const [loading, setLoading]   = useState(true)
+  const [upgradeMsg, setUpgradeMsg] = useState('')
+
+  // Handle Paystack callback
+  useEffect(() => {
+    const reference = searchParams.get('reference') || searchParams.get('trxref')
+    if (!reference) return
+    fetch(`/api/billing/verify?reference=${encodeURIComponent(reference)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.plan) {
+          setUpgradeMsg(`You're now on the ${data.plan} plan. Welcome!`)
+          router.refresh()
+        }
+      })
+      .catch(() => {})
+    // Clean up URL without triggering a navigation
+    window.history.replaceState({}, '', '/dashboard/settings')
+  }, [])
 
   useEffect(() => {
     if (!tenantId) return
@@ -78,6 +99,13 @@ export default function SettingsPage() {
   return (
     <div>
       <PageHeader title="Settings" sub="Company configuration and billing" />
+
+      {upgradeMsg && (
+        <div className="mb-6 flex items-center gap-2.5 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400">
+          <CheckCircle2 size={16} className="shrink-0" />
+          {upgradeMsg}
+        </div>
+      )}
 
       <div className="space-y-6">
         {/* Company info */}
@@ -143,13 +171,7 @@ export default function SettingsPage() {
                     targetPlan="growth"
                   />
                 )}
-                <UpgradeCard
-                  name="Enterprise"
-                  price="Custom pricing"
-                  staff={999}
-                  tenantId={tenantId}
-                  targetPlan="enterprise"
-                />
+                <EnterpriseCard />
               </div>
             </div>
           )}
@@ -202,7 +224,7 @@ function UpgradeCard({
   return (
     <div className="bento-luxury p-4">
       <p className="text-sm font-semibold text-sp-text">{name}</p>
-      <p className="text-xs text-sp-muted mt-0.5">Up to {staff === 999 ? 'unlimited' : staff} staff</p>
+      <p className="text-xs text-sp-muted mt-0.5">Up to {staff} staff</p>
       <p className="text-xs text-sp-accent mt-1 font-medium">{price}</p>
       <Button
         size="sm"
@@ -214,6 +236,22 @@ function UpgradeCard({
         <CreditCard size={12} />
         {loading ? 'Redirecting…' : 'Upgrade'}
       </Button>
+    </div>
+  )
+}
+
+function EnterpriseCard() {
+  return (
+    <div className="bento-luxury p-4">
+      <p className="text-sm font-semibold text-sp-text">Enterprise</p>
+      <p className="text-xs text-sp-muted mt-0.5">Unlimited staff</p>
+      <p className="text-xs text-sp-accent mt-1 font-medium">Custom pricing</p>
+      <a
+        href="mailto:hi.kodehaus@gmail.com?subject=StaffPilot Enterprise"
+        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-sp-border px-3 py-1.5 text-xs text-sp-muted transition-colors hover:border-sp-accent hover:text-sp-accent"
+      >
+        Contact sales
+      </a>
     </div>
   )
 }
