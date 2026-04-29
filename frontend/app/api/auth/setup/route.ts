@@ -15,6 +15,17 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // If this user already has a tenant, return it — don't create a duplicate
+    const { data: existing } = await supabase
+      .from('tenant_admins')
+      .select('tenant_id')
+      .eq('user_id', user_id)
+      .single()
+
+    if (existing?.tenant_id) {
+      return NextResponse.json({ tenant_id: existing.tenant_id })
+    }
+
     // 1. Create tenant
     const { data: tenant, error: tenantErr } = await supabase
       .from('tenants')

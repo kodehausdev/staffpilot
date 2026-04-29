@@ -127,6 +127,10 @@ export default function PayslipsPage() {
   const [showBroadcast, setShowBroadcast] = useState(false)
   const [saving, setSaving]           = useState(false)
   const [error, setError]             = useState('')
+  const [uploadingId, setUploadingId] = useState<string | null>(null)
+  const pdfInputRef = useRef<HTMLInputElement>(null)
+  const rowPdfRef   = useRef<HTMLInputElement>(null)
+  const [pendingUploadId, setPendingUploadId] = useState<string | null>(null)
 
   // Broadcast state
   const [bcastMonth, setBcastMonth]   = useState(MONTHS[now.getMonth()])
@@ -139,8 +143,8 @@ export default function PayslipsPage() {
     year: now.getFullYear(),
     gross_pay: '',
     net_pay: '',
-    file_url: '',
   })
+  const [formPdfFile, setFormPdfFile] = useState<File | null>(null)
 
   // Import state
   const [importFormat, setImportFormat] = useState<FormatKey>('generic')
@@ -176,14 +180,20 @@ export default function PayslipsPage() {
     if (isNaN(net)   || net   <= 0)   return setError('Enter a valid net pay amount')
     if (net > gross)                  return setError('Net pay cannot exceed gross pay')
     setSaving(true); setError('')
-    const { error: err } = await supabase.from('payslips').insert({
+    const { data: inserted, error: err } = await supabase.from('payslips').insert({
       tenant_id: tenantId, employee_id: form.employee_id,
       month: form.month, year: form.year,
       gross_pay: gross, net_pay: net, deductions: {},
-      file_url: form.file_url || null,
-    })
-    if (err) { setError(err.message) }
-    else { setForm({ employee_id: '', month: MONTHS[now.getMonth()], year: now.getFullYear(), gross_pay: '', net_pay: '', file_url: '' }); setShowForm(false); load() }
+    }).select('id').single()
+
+    if (err) { setError(err.message); setSaving(false); return }
+
+    if (formPdfFile && inserted?.id) await uploadPdf(inserted.id, formPdfFile)
+
+    setForm({ employee_id: '', month: MONTHS[now.getMonth()], year: now.getFullYear(), gross_pay: '', net_pay: '' })
+    setFormPdfFile(null)
+    setShowForm(false)
+    load()
     setSaving(false)
   }
 
@@ -223,6 +233,22 @@ export default function PayslipsPage() {
     await supabase.from('payslips').upsert(records, { onConflict: 'employee_id,month' })
     setImporting(false); setImportDone(true)
     setTimeout(() => { setShowImport(false); setImportRows([]); setImportDone(false); load() }, 1500)
+  }
+
+  async function uploadPdf(payslipId: string, file: File) {
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('payslip_id', payslipId)
+    setUploadingId(payslipId)
+    await fetch('/api/payslips/upload-pdf', { method: 'POST', body: fd })
+    setUploadingId(null)
+    load()
+  }
+
+  function handleRowPdfChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file && pendingUploadId) uploadPdf(pendingUploadId, file)
+    e.target.value = ''
   }
 
   async function sendBroadcast() {
@@ -370,8 +396,14 @@ export default function PayslipsPage() {
               <input required type="number" placeholder="340000" value={form.net_pay} onChange={e => setForm(p => ({ ...p, net_pay: e.target.value }))} className="input" />
             </div>
             <div className="col-span-2">
-              <label className="text-xs text-sp-muted mb-1 block">PDF URL (optional)</label>
-              <input type="url" placeholder="https://…" value={form.file_url} onChange={e => setForm(p => ({ ...p, file_url: e.target.value }))} className="input" />
+              <label className="text-xs text-sp-muted mb-1 block">Payslip PDF (optional)</label>
+              <input ref={pdfInputRef} type="file" accept=".pdf" className="hidden" onChange={e => setFormPdfFile(e.target.files?.[0] ?? null)} />
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="ghost" onClick={() => pdfInputRef.current?.click()}>
+                  <Upload size={12} /> {formPdfFile ? formPdfFile.name : 'Choose PDF'}
+                </Button>
+                {formPdfFile && <button type="button" onClick={() => setFormPdfFile(null)} className="text-sp-muted hover:text-red-400"><X size={12} /></button>}
+              </div>
             </div>
             <div className="col-span-2 flex justify-end gap-2 pt-1">
               <Button variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button>
@@ -513,12 +545,29 @@ export default function PayslipsPage() {
                     <td className="px-4 py-3 text-sp-accent font-medium">{formatCurrency(ps.net_pay)}</td>
                     <td className="px-4 py-3 text-sp-muted text-xs">{formatDate(ps.created_at)}</td>
                     <td className="px-4 py-3">
+                      <input ref={rowPdfRef} type="file" accept=".pdf" className="hidden" onChange={handleRowPdfChange} />
                       {ps.file_url ? (
-                        <a href={ps.file_url} target="_blank" rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-sp-accent text-xs hover:underline">
-                          View <ExternalLink size={11} />
-                        </a>
-                      ) : <span className="text-sp-muted text-xs">—</span>}
+                        <div className="flex items-center gap-2">
+                          <a href={ps.file_url} target="_blank" rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-sp-accent text-xs hover:underline">
+                            View <ExternalLink size={11} />
+                          </a>
+                          <button
+                            onClick={() => { setPendingUploadId(ps.id); rowPdfRef.current?.click() }}
+                            className="text-sp-muted hover:text-sp-accent text-xs"
+                            title="Replace PDF"
+                          >
+                            {uploadingId === ps.id ? '…' : <Upload size={11} />}
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setPendingUploadId(ps.id); rowPdfRef.current?.click() }}
+                          className="inline-flex items-center gap-1 text-sp-muted hover:text-sp-accent text-xs transition-colors"
+                        >
+                          {uploadingId === ps.id ? 'Uploading…' : <><Upload size={11} /> Upload</>}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 )

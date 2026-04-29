@@ -52,18 +52,23 @@ export default function SettingsPage() {
     setError('')
     setSaved(false)
 
-    const { error: err } = await supabase
-      .from('tenants')
-      .update({ name, whatsapp_number: waNumber })
-      .eq('id', tenantId)
+    try {
+      const { error: err } = await supabase
+        .from('tenants')
+        .update({ name, whatsapp_number: waNumber })
+        .eq('id', tenantId)
 
-    if (err) {
-      setError(err.message)
-    } else {
-      setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
+      if (err) {
+        setError(err.message)
+      } else {
+        setSaved(true)
+        setTimeout(() => setSaved(false), 3000)
+      }
+    } catch (e: any) {
+      setError(e?.message ?? 'Save failed — please try again')
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
   }
 
   if (tenantLoading || loading) return <Spinner />
