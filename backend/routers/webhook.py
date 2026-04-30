@@ -105,7 +105,8 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         leave.handle(employee, sess, text)
 
     elif intent == "hr_qa":
-        qa.handle(employee, text)
+        last = (sess.get("context") or {}).get("last_message")
+        qa.handle(employee, text, last_message=last)
 
     elif intent == "payslip" or text.lower() == "payslip":
         gate_msg = whatsapp_gate(employee["tenant_id"], "payslips")
@@ -122,11 +123,12 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
             onboarding.handle(employee, sess, text)
 
     elif len(text.split()) >= 3:
-        qa.handle(employee, text)
+        # Long enough to attempt RAG — might be a policy question phrased unusually
+        last = (sess.get("context") or {}).get("last_message")
+        qa.handle(employee, text, last_message=last)
 
     else:
-        name = employee.get("name") or "there"
-        send_message(from_phone, GREETING_MSG.format(name=name))
+        send_message(from_phone, "That's not really my lane 😅 — I handle leave, payslips, and HR policy questions. What can I help with?")
 
 
 def _get_tenant_by_number_id(phone_number_id: str) -> dict | None:

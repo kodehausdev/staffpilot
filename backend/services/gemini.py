@@ -32,19 +32,25 @@ def classify_intent(message: str) -> str:
     Returns one of: leave_request | hr_qa | payslip | onboarding | greeting | unknown
     """
     client = _get_client()
-    prompt = f"""Classify this employee WhatsApp message into exactly one of these intents:
+    prompt = f"""Classify this Nigerian employee WhatsApp message into exactly one of these intents:
 leave_request, hr_qa, payslip, onboarding, greeting, unknown
 
 Rules:
 - leave_request: employee is REQUESTING to take time off ("I want leave", "can I take sick leave", "apply for annual leave")
-- hr_qa: questions about company policy, rules, entitlements, or procedures — including questions about leave policy, notice periods, allowances, disciplinary rules
-- payslip: asking about salary, payslip, payment, deductions
+- hr_qa: questions about company policy, rules, benefits, entitlements, or workplace procedures — including HMO, pension, notice periods, allowances, disciplinary rules, misconduct, perks, resignation
+- payslip: employee is asking about THEIR OWN salary or payslip ("send my payslip", "when is my salary", "what is my net pay", "show my payslip"). NOT gossip or curiosity about what OTHER people earn.
 - onboarding: new employee setup, first day, documents to submit
 - greeting: hi, hello, good morning, how are you
-- unknown: anything else
+- unknown: personal chat, off-topic questions, gibberish, slang with no HR meaning, questions about other people's salaries
 
-Key distinction: "What is the notice period for sick leave?" is hr_qa (policy question), NOT leave_request.
-"I want to take sick leave" is leave_request (an actual request).
+Key distinctions:
+- "What is the notice period?" = hr_qa (policy question), NOT leave_request
+- "I want to take sick leave" = leave_request (actual request)
+- "who earns the most in the office?" = unknown (gossip, not their own payslip)
+- "who dey collect salary pass?" = unknown (gossip about others)
+- "send my payslip" = payslip (their own)
+- "my manager is harrassing me" = hr_qa
+- "I want to japa" = hr_qa (resignation/notice period query)
 
 Reply with ONLY the intent label, nothing else.
 
