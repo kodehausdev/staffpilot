@@ -4,6 +4,7 @@ Meta WhatsApp Cloud API webhook.
 GET  /webhook  → verification handshake
 POST /webhook  → incoming messages
 """
+import re
 from fastapi import APIRouter, Request, HTTPException, Query, BackgroundTasks
 from db.supabase_client import get_supabase
 from services import session as session_svc
@@ -89,14 +90,33 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         onboarding.handle(employee, sess, text)
         return
 
-    _GRATITUDE = {"thanks", "thank you", "ty", "10q", "thx", "👍", "🙏", "ok thanks", "ok thank you", "noted", "noted thanks"}
-    if text.lower().strip("!. ") in _GRATITUDE:
+    _GRATITUDE = {
+        "thanks", "thank you", "ty", "10q", "thx", "👍", "🙏",
+        "ok thanks", "ok thank you", "noted", "noted thanks",
+        "ok", "okay", "k", "fine", "aight", "alright", "cool", "got it",
+    }
+    if text.lower().strip("!?. ") in _GRATITUDE:
         send_message(from_phone, "No wahala! Anything else I can help with?")
+        return
+
+    # Chat privacy — hardcoded system truth, not a policy question
+    _PRIVACY_PHRASES = (
+        "is this chat", "this chat save", "will you report", "you go report",
+        "go you tell", "will hr know", "is this private", "is this confidential",
+        "you dey record", "you go record",
+    )
+    if any(p in text.lower() for p in _PRIVACY_PHRASES):
+        send_message(from_phone, "Your chats here are private — I don't report your questions to HR or anyone else. Ask freely. 🤝")
         return
 
     intent = classify_intent(text)
 
-    if intent == "greeting" or text.lower() in ("hi", "hello", "hey", "start"):
+    # Normalise text for greeting detection — handles "ok. start", "hey!" etc.
+    _text_words = set(re.sub(r'[^\w\s]', ' ', text.lower()).split())
+    _GREETING_WORDS = {"hi", "hello", "hey", "start", "begin", "menu"}
+    _is_greeting = intent == "greeting" or (bool(_text_words & _GREETING_WORDS) and len(_text_words) <= 3)
+
+    if _is_greeting:
         name = employee.get("name") or "there"
         send_message(from_phone, GREETING_MSG.format(name=name))
 
