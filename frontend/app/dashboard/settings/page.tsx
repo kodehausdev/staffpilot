@@ -58,7 +58,7 @@ export default function SettingsPage() {
       .select('name, whatsapp_number')
       .eq('id', tenantId)
       .single()
-      .then(({ data }) => {
+      .then(({ data }: { data: { name: string | null; whatsapp_number: string | null } | null }) => {
         if (data) {
           setName(data.name ?? '')
           setWaNumber(data.whatsapp_number ?? '')

@@ -48,8 +48,8 @@ export default function DashboardPage() {
 
       const emps     = (empRes.data ?? []) as Pick<Employee, 'id' | 'department' | 'is_active'>[]
       const active   = emps.filter(e => e.is_active)
-      const leave    = leaveRes.data ?? []
-      const allLeave = allLeaveRes.data ?? []
+      const leave    = (leaveRes.data ?? []) as LeaveRequest[]
+      const allLeave = (allLeaveRes.data ?? []) as Pick<LeaveRequest, 'status'>[]
 
       const deptMap: Record<string, number> = {}
       active.forEach(e => {
