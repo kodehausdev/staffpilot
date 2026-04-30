@@ -6,7 +6,7 @@ import { useTenant } from '@/lib/use-tenant'
 import { useAuth } from '@/lib/auth-context'
 import { Badge, Spinner } from '@/components/ui'
 import { formatCurrency, STATUS_COLORS, LEAVE_TYPE_COLORS } from '@/lib/utils'
-import type { LeaveRequest, Payslip } from '@/lib/supabase'
+import type { Employee, LeaveRequest, Payslip } from '@/lib/supabase'
 import { ArrowRight, UserPlus, Upload, Plus, CreditCard, CalendarOff, ChevronDown } from 'lucide-react'
 
 type DeptCount = { department: string; count: number }
@@ -46,7 +46,7 @@ export default function DashboardPage() {
         supabase.from('hr_documents').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
       ])
 
-      const emps     = empRes.data ?? []
+      const emps     = (empRes.data ?? []) as Pick<Employee, 'id' | 'department' | 'is_active'>[]
       const active   = emps.filter(e => e.is_active)
       const leave    = leaveRes.data ?? []
       const allLeave = allLeaveRes.data ?? []
