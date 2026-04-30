@@ -12,6 +12,7 @@ from db.supabase_client import get_supabase
 from config import get_settings
 from services.whatsapp import send_message
 from services.gemini import embed_document_chunk
+from services.gating import check_doc_limit, check_employee_limit
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -164,6 +165,8 @@ async def upload_doc(
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
 
+    check_doc_limit(tenant_id)
+
     content = await file.read()
     try:
         reader = PyPDF2.PdfReader(io.BytesIO(content))
@@ -216,6 +219,48 @@ def delete_doc(doc_id: str):
     # doc_chunks cascade-deletes via FK
     sb.table("hr_documents").delete().eq("id", doc_id).execute()
     return {"ok": True}
+
+
+# ─── Payslip broadcast ───────────────────────────────────────────────────────
+
+class PayslipBroadcast(BaseModel):
+    tenant_id: str
+    month: str   # "April"
+    year: int
+
+
+@router.post("/broadcast/payslips", dependencies=[Depends(verify_admin)])
+def broadcast_payslips(body: PayslipBroadcast):
+    sb = get_supabase()
+
+    slips = (
+        sb.table("payslips")
+        .select("*, employees(name, phone)")
+        .eq("tenant_id", body.tenant_id)
+        .eq("month", body.month)
+        .eq("year", body.year)
+        .execute()
+    ).data or []
+
+    sent, failed = 0, 0
+    for slip in slips:
+        emp = slip.get("employees") or {}
+        phone = emp.get("phone")
+        if not phone:
+            failed += 1
+            continue
+        name = (emp.get("name") or "").split()[0] or "there"
+        msg  = (
+            f"💚 {name}, your {body.month} {body.year} payslip is ready!\n\n"
+            f"Reply *payslip* to see your breakdown privately. 💰"
+        )
+        try:
+            send_message(phone, msg)
+            sent += 1
+        except Exception:
+            failed += 1
+
+    return {"sent": sent, "failed": failed, "total": len(slips)}
 
 
 # ─── Broadcast message ────────────────────────────────────────────────────────

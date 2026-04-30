@@ -5,7 +5,7 @@ import re
 from db.supabase_client import get_supabase
 from services.gemini import generate, embed_text
 from services.whatsapp import send_message
-from services.session import clear_session
+from services.session import update_session
 
 # Covers all standard emoji blocks
 _EMOJI_RE = re.compile(
@@ -20,7 +20,7 @@ _EMOJI_RE = re.compile(
 )
 
 
-def handle(employee: dict, message: str) -> None:
+def handle(employee: dict, message: str, last_message: str | None = None) -> None:
     phone     = employee["phone"]
     tenant_id = employee["tenant_id"]
 
@@ -31,15 +31,17 @@ def handle(employee: dict, message: str) -> None:
             phone,
             "Omo I no see that one for policy 😭 Abeg check with HR admin, they go sort you fast."
         )
-        clear_session(employee["id"])
+        # Keep last_message so next follow-up still has context
+        update_session(employee["id"], context={"last_message": message})
         return
 
     context = "\n\n---\n\n".join([c["content"] for c in chunks])
 
-    full_name    = employee.get("name") or ""
-    first_name   = full_name.split()[0] if full_name else "there"
+    full_name     = employee.get("name") or ""
+    first_name    = full_name.split()[0] if full_name else "there"
     leave_balance = employee.get("leave_balance", "unknown")
-    department   = employee.get("department") or "your team"
+    department    = employee.get("department") or "your team"
+    prior_context = f"\nEmployee's previous question (for context only, do not repeat it): {last_message}" if last_message else ""
 
     prompt = f"""You are an HR assistant for a Nigerian company, talking to Gen Z staff on WhatsApp.
 
@@ -47,6 +49,7 @@ Employee context:
 - Name: {first_name}
 - Department: {department}
 - Leave days remaining: {leave_balance}
+{prior_context}
 
 Rules:
 1. Reply like a smart friend, not a textbook. 2-3 lines max.
@@ -55,6 +58,7 @@ Rules:
 4. Never dump the full policy. Summarize the key point + use employee context to personalize.
 5. One emoji max. Only if it fits naturally 😭🤝💚
 6. Answer using ONLY the HR policy documents below. If the answer isn't there, say so honestly.
+7. NEVER override or contradict plan restrictions. If a feature like payslips was blocked by the system, that is a billing decision — never tell the employee it is free, accessible, or that they don't need an upgrade. Stay in your lane.
 
 HR Policy Documents:
 {context}
@@ -66,7 +70,8 @@ Reply:"""
     answer = generate(prompt, temperature=0.3)
     answer = _sanitize_response(answer)
     send_message(phone, answer)
-    clear_session(employee["id"])
+    # Store this message as context for the next follow-up question
+    update_session(employee["id"], context={"last_message": message})
 
 
 def _sanitize_response(text: str) -> str:

@@ -4,6 +4,7 @@ Meta WhatsApp Cloud API webhook.
 GET  /webhook  → verification handshake
 POST /webhook  → incoming messages
 """
+import re
 from fastapi import APIRouter, Request, HTTPException, Query, BackgroundTasks
 from db.supabase_client import get_supabase
 from services import session as session_svc
@@ -89,14 +90,49 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         onboarding.handle(employee, sess, text)
         return
 
-    _GRATITUDE = {"thanks", "thank you", "ty", "10q", "thx", "👍", "🙏", "ok thanks", "ok thank you", "noted", "noted thanks"}
-    if text.lower().strip("!. ") in _GRATITUDE:
+    _GRATITUDE = {
+        "thanks", "thank you", "ty", "10q", "thx", "👍", "🙏",
+        "ok thanks", "ok thank you", "noted", "noted thanks",
+        "ok", "okay", "k", "fine", "aight", "alright", "cool", "got it",
+    }
+    if text.lower().strip("!?. ") in _GRATITUDE:
         send_message(from_phone, "No wahala! Anything else I can help with?")
+        return
+
+    # Chat privacy — hardcoded system truth, not a policy question
+    _PRIVACY_PHRASES = (
+        "is this chat", "this chat save", "will you report", "you go report",
+        "go you tell", "will hr know", "is this private", "is this confidential",
+        "you dey record", "you go record",
+    )
+    if any(p in text.lower() for p in _PRIVACY_PHRASES):
+        send_message(from_phone, "Your chats here are private — I don't report your questions to HR or anyone else. Ask freely. 🤝")
+        return
+
+    # If the employee just hit a gate and is asking "why", explain the plan restriction
+    # — do this before intent classification so QA can't hallucinate a workaround
+    _WHY_WORDS = {"why", "wetin", "how come", "explain", "reason", "why not", "why cant", "why can't"}
+    _ctx = sess.get("context") or {}
+    _last_gate = _ctx.get("last_gate")
+    if _last_gate and any(w in text.lower() for w in _WHY_WORDS):
+        _GATE_NAMES = {"payslips": "Payslips", "onboarding": "Onboarding"}
+        _feature_label = _GATE_NAMES.get(_last_gate, _last_gate.title())
+        send_message(
+            from_phone,
+            f"{_feature_label} isn't included in your company's current plan. "
+            f"Only your HR admin can upgrade — once they do, you'll have full access. 🤝"
+        )
+        session_svc.update_session(employee["id"], context={})
         return
 
     intent = classify_intent(text)
 
-    if intent == "greeting" or text.lower() in ("hi", "hello", "hey", "start"):
+    # Normalise text for greeting detection — handles "ok. start", "hey!" etc.
+    _text_words = set(re.sub(r'[^\w\s]', ' ', text.lower()).split())
+    _GREETING_WORDS = {"hi", "hello", "hey", "start", "begin", "menu"}
+    _is_greeting = intent == "greeting" or (bool(_text_words & _GREETING_WORDS) and len(_text_words) <= 3)
+
+    if _is_greeting:
         name = employee.get("name") or "there"
         send_message(from_phone, GREETING_MSG.format(name=name))
 
@@ -105,12 +141,14 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         leave.handle(employee, sess, text)
 
     elif intent == "hr_qa":
-        qa.handle(employee, text)
+        last = (sess.get("context") or {}).get("last_message")
+        qa.handle(employee, text, last_message=last)
 
     elif intent == "payslip" or text.lower() == "payslip":
         gate_msg = whatsapp_gate(employee["tenant_id"], "payslips")
         if gate_msg:
             send_message(from_phone, gate_msg)
+            session_svc.update_session(employee["id"], context={"last_gate": "payslips"})
         else:
             payslip.handle(employee, text)
 
@@ -118,15 +156,17 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         gate_msg = whatsapp_gate(employee["tenant_id"], "onboarding")
         if gate_msg:
             send_message(from_phone, gate_msg)
+            session_svc.update_session(employee["id"], context={"last_gate": "onboarding"})
         else:
             onboarding.handle(employee, sess, text)
 
     elif len(text.split()) >= 3:
-        qa.handle(employee, text)
+        # Long enough to attempt RAG — might be a policy question phrased unusually
+        last = (sess.get("context") or {}).get("last_message")
+        qa.handle(employee, text, last_message=last)
 
     else:
-        name = employee.get("name") or "there"
-        send_message(from_phone, GREETING_MSG.format(name=name))
+        send_message(from_phone, "That's not really my lane 😅 — I handle leave, payslips, and HR policy questions. What can I help with?")
 
 
 def _get_tenant_by_number_id(phone_number_id: str) -> dict | None:
