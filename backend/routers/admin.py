@@ -12,6 +12,7 @@ from db.supabase_client import get_supabase
 from config import get_settings
 from services.whatsapp import send_message
 from services.gemini import embed_document_chunk
+from services.gating import check_doc_limit, check_employee_limit
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -163,6 +164,8 @@ async def upload_doc(
 ):
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
+
+    check_doc_limit(tenant_id)
 
     content = await file.read()
     try:

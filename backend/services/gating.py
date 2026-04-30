@@ -8,6 +8,7 @@ from db.supabase_client import get_supabase
 PLAN_FEATURES = {
     "starter": {
         "max_employees": 30,
+        "max_hr_docs":   3,
         "payslips":      False,
         "onboarding":    False,
         "broadcast":     False,
@@ -16,6 +17,7 @@ PLAN_FEATURES = {
     },
     "growth": {
         "max_employees": 150,
+        "max_hr_docs":   10,
         "payslips":      True,
         "onboarding":    True,
         "broadcast":     False,
@@ -23,7 +25,8 @@ PLAN_FEATURES = {
         "leave":         True,
     },
     "enterprise": {
-        "max_employees": -1,    # unlimited
+        "max_employees": -1,   # unlimited
+        "max_hr_docs":   -1,   # unlimited
         "payslips":      True,
         "onboarding":    True,
         "broadcast":     True,
@@ -75,6 +78,22 @@ def check_employee_limit(tenant_id: str) -> None:
         raise HTTPException(
             status_code=402,
             detail=f"You've reached your {plan} plan limit of {limit} employees. Upgrade to add more."
+        )
+
+
+def check_doc_limit(tenant_id: str) -> None:
+    """Raise if tenant has hit their HR document cap."""
+    plan  = get_plan(tenant_id)
+    limit = PLAN_FEATURES.get(plan, {}).get("max_hr_docs", 3)
+    if limit == -1:
+        return
+
+    sb    = get_supabase()
+    count = sb.table("hr_documents").select("id", count="exact").eq("tenant_id", tenant_id).execute()
+    if (count.count or 0) >= limit:
+        raise HTTPException(
+            status_code=402,
+            detail=f"Your {plan} plan allows up to {limit} HR documents. Delete an existing document or upgrade your plan."
         )
 
 
