@@ -12,7 +12,12 @@ Creates:
   - 3 payslip records
 """
 import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../backend"))
+
+_backend_dir = os.path.join(os.path.dirname(__file__), "../backend")
+sys.path.insert(0, _backend_dir)
+
+from dotenv import load_dotenv
+load_dotenv(os.path.join(_backend_dir, ".env"))
 
 from db.supabase_client import get_supabase
 from datetime import date, timedelta

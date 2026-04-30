@@ -12,7 +12,12 @@ import argparse
 import sys
 import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../backend"))
+# Load backend .env before importing any settings-dependent modules
+_backend_dir = os.path.join(os.path.dirname(__file__), "../backend")
+sys.path.insert(0, _backend_dir)
+
+from dotenv import load_dotenv
+load_dotenv(os.path.join(_backend_dir, ".env"))
 
 from db.supabase_client import get_supabase
 from services.gemini import embed_document_chunk
@@ -285,17 +290,18 @@ def chunk_text(text: str) -> list[str]:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--tenant-id", required=True, help="Tenant UUID from Supabase")
+    parser.add_argument("--title", default="Employee Handbook 2026", help="Document title shown in dashboard")
     args = parser.parse_args()
 
     sb    = get_supabase()
     tid   = args.tenant_id
-    title = "Apex Consulting Employee Handbook 2026"
+    title = args.title
 
-    # Delete any existing handbook for a clean re-seed
-    existing = sb.table("hr_documents").select("id").eq("tenant_id", tid).eq("title", title).execute()
+    # Delete ALL existing docs for this tenant so we start clean
+    existing = sb.table("hr_documents").select("id, title").eq("tenant_id", tid).execute()
     for doc in (existing.data or []):
         sb.table("hr_documents").delete().eq("id", doc["id"]).execute()
-        print(f"  Deleted old handbook: {doc['id']}")
+        print(f"  Deleted: {doc['title']} ({doc['id']})")
 
     chunks = chunk_text(HANDBOOK)
     print(f"📄 {title}")
