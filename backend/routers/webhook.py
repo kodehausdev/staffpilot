@@ -103,7 +103,7 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
     _PRIVACY_PHRASES = (
         "is this chat", "this chat save", "will you report", "you go report",
         "go you tell", "will hr know", "is this private", "is this confidential",
-        "you dey record", "you go record",
+        "you dey record", "you go record", "snitch", "will hr tell",
     )
     if any(p in text.lower() for p in _PRIVACY_PHRASES):
         send_message(from_phone, "Your chats here are private — I don't report your questions to HR or anyone else. Ask freely. 🤝")

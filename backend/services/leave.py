@@ -37,7 +37,7 @@ def handle(employee: dict, session: dict, message: str) -> None:
         return
 
     if step == "type":
-        _ask_type(phone, employee["id"])
+        _ask_type(phone, employee["id"], message)
 
     elif step == "start_date":
         choice = message.strip()
@@ -96,11 +96,24 @@ def handle(employee: dict, session: dict, message: str) -> None:
         send_message(phone, "Something went wrong. Let's start over. Type 'leave' to begin.")
 
 
-def _ask_type(phone: str, employee_id: str) -> None:
+_EMPATHY_WORDS = {
+    "anxiety", "anxious", "mental health", "stress", "stressed", "burnout",
+    "overwhelmed", "not feeling", "tired", "exhausted", "unwell", "sick",
+    "struggling", "situation", "ghost work", "ghost",
+}
+
+
+def _ask_type(phone: str, employee_id: str, trigger: str = "") -> None:
+    trigger_lower = trigger.lower()
+    prefix = (
+        "I hear you — taking care of yourself matters. 🤝\n\n"
+        if any(w in trigger_lower for w in _EMPATHY_WORDS)
+        else ""
+    )
     update_session(employee_id, flow="leave_request", step="start_date")
     send_message(
         phone,
-        "What type of leave?\n\n"
+        f"{prefix}What type of leave?\n\n"
         "1 - Annual\n"
         "2 - Sick\n"
         "3 - Maternity\n"
