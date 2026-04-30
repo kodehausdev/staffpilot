@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     paystack_secret_key: str = ""
     paystack_webhook_secret: str = ""
 
+    # Payslip field encryption — generate with:
+    # python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    payslip_encryption_key: str = ""
+
     class Config:
         env_file = ".env"
 

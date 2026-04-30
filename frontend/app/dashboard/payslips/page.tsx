@@ -159,12 +159,11 @@ export default function PayslipsPage() {
     setLoading(true)
     try {
       const [psRes, empRes] = await Promise.all([
-        supabase.from('payslips').select('*, employees(name, phone)')
-          .eq('tenant_id', tenantId).order('created_at', { ascending: false }),
+        fetch(`/api/payslips/list?tenant_id=${tenantId}`).then(r => r.json()),
         supabase.from('employees').select('id, name, phone')
           .eq('tenant_id', tenantId).eq('is_active', true),
       ])
-      setPayslips(psRes.data ?? [])
+      setPayslips(Array.isArray(psRes) ? psRes : [])
       setEmployees(empRes.data ?? [])
     } finally {
       setLoading(false)
@@ -180,13 +179,17 @@ export default function PayslipsPage() {
     if (isNaN(net)   || net   <= 0)   return setError('Enter a valid net pay amount')
     if (net > gross)                  return setError('Net pay cannot exceed gross pay')
     setSaving(true); setError('')
-    const { data: inserted, error: err } = await supabase.from('payslips').insert({
-      tenant_id: tenantId, employee_id: form.employee_id,
-      month: form.month, year: form.year,
-      gross_pay: gross, net_pay: net, deductions: {},
-    }).select('id').single()
-
-    if (err) { setError(err.message); setSaving(false); return }
+    const res = await fetch('/api/payslips/add', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        tenant_id: tenantId, employee_id: form.employee_id,
+        month: form.month, year: form.year,
+        gross_pay: gross, net_pay: net, deductions: {},
+      }),
+    })
+    const inserted = await res.json()
+    if (!res.ok) { setError(inserted.detail || 'Save failed'); setSaving(false); return }
 
     if (formPdfFile && inserted?.id) await uploadPdf(inserted.id, formPdfFile)
 
@@ -230,7 +233,11 @@ export default function PayslipsPage() {
       net_pay:     r.net,
       deductions:  {},
     }))
-    await supabase.from('payslips').upsert(records, { onConflict: 'employee_id,month' })
+    await fetch('/api/payslips/import', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(records),
+    })
     setImporting(false); setImportDone(true)
     setTimeout(() => { setShowImport(false); setImportRows([]); setImportDone(false); load() }, 1500)
   }

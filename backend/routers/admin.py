@@ -13,6 +13,7 @@ from config import get_settings
 from services.whatsapp import send_message
 from services.gemini import embed_document_chunk
 from services.gating import check_doc_limit, check_employee_limit
+from services.encryption import encrypt_amount, decrypt_amount, encrypt_dict, decrypt_dict
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -250,8 +251,8 @@ def broadcast_payslips(body: PayslipBroadcast):
             failed += 1
             continue
         name  = (emp.get("name") or "").split()[0] or "there"
-        gross = slip.get("gross_pay") or 0
-        net   = slip.get("net_pay")   or 0
+        gross = decrypt_amount(slip.get("gross_pay"))
+        net   = decrypt_amount(slip.get("net_pay"))
         msg = (
             f"💚 {name}, your {body.month} {body.year} salary don land!\n\n"
             f"Gross: ₦{gross:,.0f}\n"
@@ -292,3 +293,84 @@ def broadcast(body: BroadcastMsg):
             pass
 
     return {"sent": sent, "total": len(employees)}
+
+
+# ─── Payslip CRUD (encrypted) ─────────────────────────────────────────────────
+
+class PayslipCreate(BaseModel):
+    tenant_id:   str
+    employee_id: str
+    month:       str
+    year:        int
+    gross_pay:   float
+    net_pay:     float
+    deductions:  dict = {}
+
+
+class PayslipImportRow(BaseModel):
+    tenant_id:   str
+    employee_id: str
+    month:       str
+    year:        int
+    gross_pay:   float
+    net_pay:     float
+    deductions:  dict = {}
+
+
+def _decrypt_slip(slip: dict) -> dict:
+    return {
+        **slip,
+        "gross_pay":  decrypt_amount(slip.get("gross_pay")),
+        "net_pay":    decrypt_amount(slip.get("net_pay")),
+        "deductions": decrypt_dict(slip.get("deductions")),
+    }
+
+
+@router.get("/payslips", dependencies=[Depends(verify_admin)])
+def list_payslips(tenant_id: str):
+    sb  = get_supabase()
+    rows = (
+        sb.table("payslips")
+        .select("*, employees(name, phone)")
+        .eq("tenant_id", tenant_id)
+        .order("created_at", desc=True)
+        .execute()
+    ).data or []
+    return [_decrypt_slip(r) for r in rows]
+
+
+@router.post("/payslips", dependencies=[Depends(verify_admin)])
+def create_payslip(body: PayslipCreate):
+    sb     = get_supabase()
+    result = sb.table("payslips").insert({
+        "tenant_id":   body.tenant_id,
+        "employee_id": body.employee_id,
+        "month":       body.month,
+        "year":        body.year,
+        "gross_pay":   encrypt_amount(body.gross_pay),
+        "net_pay":     encrypt_amount(body.net_pay),
+        "deductions":  encrypt_dict(body.deductions),
+    }).select("id").single().execute()
+    return {"ok": True, "id": result.data["id"]}
+
+
+@router.post("/payslips/import", dependencies=[Depends(verify_admin)])
+def import_payslips(rows: list[PayslipImportRow]):
+    sb      = get_supabase()
+    records = [{
+        "tenant_id":   r.tenant_id,
+        "employee_id": r.employee_id,
+        "month":       r.month,
+        "year":        r.year,
+        "gross_pay":   encrypt_amount(r.gross_pay),
+        "net_pay":     encrypt_amount(r.net_pay),
+        "deductions":  encrypt_dict(r.deductions),
+    } for r in rows]
+    sb.table("payslips").upsert(records, on_conflict="employee_id,month").execute()
+    return {"ok": True, "count": len(records)}
+
+
+@router.delete("/payslips/{payslip_id}", dependencies=[Depends(verify_admin)])
+def delete_payslip(payslip_id: str):
+    get_supabase().table("payslips").delete().eq("id", payslip_id).execute()
+    return {"ok": True}

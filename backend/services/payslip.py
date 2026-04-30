@@ -5,6 +5,7 @@ Fetches latest payslip or a specific month.
 from db.supabase_client import get_supabase
 from services.whatsapp import send_message
 from services.session import clear_session
+from services.encryption import decrypt_amount, decrypt_dict
 
 
 def handle(employee: dict, message: str) -> None:
@@ -37,19 +38,21 @@ def handle(employee: dict, message: str) -> None:
         clear_session(employee["id"])
         return
 
-    slip = result.data[0]
-    deductions = slip.get("deductions") or {}
+    slip       = result.data[0]
+    gross_pay  = decrypt_amount(slip.get("gross_pay"))
+    net_pay    = decrypt_amount(slip.get("net_pay"))
+    deductions = decrypt_dict(slip.get("deductions"))
 
     response = (
         f"Payslip — {slip['month']}\n\n"
-        f"Gross Pay: ₦{slip['gross_pay']:,.2f}\n"
+        f"Gross Pay: ₦{gross_pay:,.2f}\n"
     )
 
     if deductions:
         for key, val in deductions.items():
             response += f"{key.title()}: -₦{val:,.2f}\n"
 
-    response += f"\nNet Pay: ₦{slip['net_pay']:,.2f}"
+    response += f"\nNet Pay: ₦{net_pay:,.2f}"
 
     if slip.get("file_url"):
         response += f"\n\nDownload: {slip['file_url']}"
