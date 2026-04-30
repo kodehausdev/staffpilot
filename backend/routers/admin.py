@@ -249,14 +249,10 @@ def broadcast_payslips(body: PayslipBroadcast):
         if not phone:
             failed += 1
             continue
-        name  = (emp.get("name") or "").split()[0] or "there"
-        gross = slip.get("gross_pay") or 0
-        net   = slip.get("net_pay")   or 0
-        msg = (
-            f"💚 {name}, your {body.month} {body.year} salary don land!\n\n"
-            f"Gross: ₦{gross:,.0f}\n"
-            f"Net:   ₦{net:,.0f}\n\n"
-            f"Any question? Just ask me here 🤝"
+        name = (emp.get("name") or "").split()[0] or "there"
+        msg  = (
+            f"💚 {name}, your {body.month} {body.year} payslip is ready!\n\n"
+            f"Reply *payslip* to see your breakdown privately. 💰"
         )
         try:
             send_message(phone, msg)
