@@ -36,8 +36,8 @@ def classify_intent(message: str) -> str:
 leave_request, hr_qa, payslip, onboarding, greeting, unknown
 
 Rules:
-- leave_request: employee is REQUESTING to take time off ("I want leave", "can I take sick leave", "apply for annual leave")
-- hr_qa: questions about company policy, rules, benefits, entitlements, or workplace procedures — including HMO, pension, notice periods, allowances, disciplinary rules, misconduct, perks, resignation
+- leave_request: employee wants to ACTIVELY START a leave application right now ("I want leave", "can I take sick leave", "apply for annual leave", "I need tomorrow off"). The employee is ready to submit, not just asking questions.
+- hr_qa: questions about company policy, rules, benefits, entitlements, or workplace procedures — including HMO, pension, notice periods, allowances, disciplinary rules, misconduct, perks, resignation. ALSO: questions about how leave works, whether something is permissible, or what the process is — even if they mention leave days or balances.
 - payslip: employee is asking about THEIR OWN salary or payslip ("send my payslip", "when is my salary", "what is my net pay", "show my payslip"). NOT gossip or curiosity about what OTHER people earn.
 - onboarding: new employee setup, first day, documents to submit
 - greeting: hi, hello, good morning, how are you
@@ -45,7 +45,10 @@ Rules:
 
 Key distinctions:
 - "What is the notice period?" = hr_qa (policy question), NOT leave_request
-- "I want to take sick leave" = leave_request (actual request)
+- "I want to take sick leave" = leave_request (actual request to submit now)
+- "I have accrued 17.5 days, is half-day leave permissible?" = hr_qa (policy question, NOT a leave request — they are asking HOW, not submitting)
+- "can I take 3.5 days for my nephew's graduation?" = hr_qa (asking about policy/permissibility)
+- "do I need to submit a letter?" = hr_qa (process question)
 - "who earns the most in the office?" = unknown (gossip, not their own payslip)
 - "who dey collect salary pass?" = unknown (gossip about others)
 - "send my payslip" = payslip (their own)
