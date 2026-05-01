@@ -42,7 +42,15 @@ def handle(employee: dict, session: dict, message: str) -> None:
     elif step == "start_date":
         choice = message.strip()
         if choice not in LEAVE_TYPES:
-            send_message(phone, "Please reply with a number 1–5.")
+            # Long message in the middle of the flow — likely a question, not a menu choice
+            if len(message.split()) > 6:
+                send_message(phone,
+                    "Looks like you have a question! Type *cancel* to exit the leave request "
+                    "and ask freely, or reply 1–5 to continue.\n\n"
+                    "1 - Annual  2 - Sick  3 - Maternity  4 - Paternity  5 - Unpaid"
+                )
+            else:
+                send_message(phone, "Please reply with a number 1–5.")
             return
         update_context(employee["id"], "leave_type", LEAVE_TYPES[choice])
         update_session(employee["id"], step="end_date")
