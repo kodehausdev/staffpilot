@@ -32,9 +32,12 @@ export default function DashboardPage() {
   const [deptExpanded, setDeptExpanded]     = useState(false)
 
   useEffect(() => {
-    if (!tenantId) return
+    if (!tenantId) {
+      if (!tenantLoading) setLoading(false)
+      return
+    }
     load()
-  }, [tenantId])
+  }, [tenantId, tenantLoading])
 
   async function load() {
     try {
@@ -76,6 +79,12 @@ export default function DashboardPage() {
   }
 
   if (tenantLoading || loading) return <Spinner />
+  if (!tenantId) return (
+    <div className="flex flex-col items-center justify-center h-64 gap-3 text-center">
+      <p className="text-sp-text font-medium">Account not linked to a company</p>
+      <p className="text-sm text-sp-muted">Your account exists but isn't connected to a tenant yet.<br />Contact support or try signing out and signing up again.</p>
+    </div>
+  )
 
   const firstName   = user?.email?.split('@')[0] ?? ''
   const companyName = tenantAdmin?.tenants?.name ?? '—'
