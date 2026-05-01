@@ -48,10 +48,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     async function init() {
-      const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
-      if (session?.user) await loadTenantAdmin(session.user.id)
-      setLoading(false)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        setUser(session?.user ?? null)
+        if (session?.user) await loadTenantAdmin(session.user.id)
+      } catch (e) {
+        console.error('[auth] init failed:', e)
+      } finally {
+        setLoading(false)
+      }
     }
 
     init()
