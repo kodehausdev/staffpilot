@@ -42,8 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select('tenant_id, role, tenants(*)')
       .eq('user_id', userId)
       .limit(1)
-      .single()
-    setTenantAdmin(data as TenantAdmin | null)
+    setTenantAdmin((data?.[0] ?? null) as TenantAdmin | null)
   }
 
   useEffect(() => {
