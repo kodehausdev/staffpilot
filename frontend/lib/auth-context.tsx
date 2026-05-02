@@ -60,7 +60,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     init()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'INITIAL_SESSION') return  // init() handles this
       setUser(session?.user ?? null)
       if (session?.user) {
         await loadTenantAdmin(session.user.id)

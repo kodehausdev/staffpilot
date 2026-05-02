@@ -154,7 +154,7 @@ function LoginForm() {
       </div>
 
       <p className="text-center text-xs text-sp-muted mt-5">
-        Powered by Kodehaus · Abuja, Nigeria
+        Powered by Optipropose Studio · Abuja, Nigeria
       </p>
     </div>
   )

@@ -11,7 +11,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
-  }, [user, loading, router])
+  }, [user, loading])
 
   if (loading) return (
     <div className="min-h-screen bg-sp-bg flex items-center justify-center">
