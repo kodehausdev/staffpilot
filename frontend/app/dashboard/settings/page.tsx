@@ -52,7 +52,10 @@ export default function SettingsPage() {
   }, [])
 
   useEffect(() => {
-    if (!tenantId) return
+    if (!tenantId) {
+      if (!tenantLoading) setLoading(false)
+      return
+    }
     supabase
       .from('tenants')
       .select('name, whatsapp_number')
@@ -65,7 +68,7 @@ export default function SettingsPage() {
         }
         setLoading(false)
       })
-  }, [tenantId])
+  }, [tenantId, tenantLoading])
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
@@ -74,19 +77,20 @@ export default function SettingsPage() {
     setSaved(false)
 
     try {
-      const { error: err } = await supabase
-        .from('tenants')
-        .update({ name, whatsapp_number: waNumber })
-        .eq('id', tenantId)
-
-      if (err) {
-        setError(err.message)
+      const res = await fetch('/api/settings/save', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ tenant_id: tenantId, name, whatsapp_number: waNumber }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error ?? 'Save failed — please try again')
       } else {
         setSaved(true)
         setTimeout(() => setSaved(false), 3000)
       }
     } catch (e: any) {
-      setError(e?.message ?? 'Save failed — please try again')
+      setError(e?.message ?? 'Save failed — check your connection')
     } finally {
       setSaving(false)
     }
