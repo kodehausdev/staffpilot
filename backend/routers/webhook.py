@@ -5,6 +5,7 @@ GET  /webhook  → verification handshake
 POST /webhook  → incoming messages
 """
 import re
+import random
 from fastapi import APIRouter, Request, HTTPException, Query, BackgroundTasks
 from db.supabase_client import get_supabase
 from services import session as session_svc
@@ -31,10 +32,28 @@ _SALARY_PATTERNS = (
     "employee salary", "payroll list", "highest paid", "top paid",
     "who earns", "earns most", "earns the most", "total payroll",
     "payroll cost", "average salary", "salary data", "sample salary",
-    "salary of ", "rank salary", "compare salary", "override=", "/admin",
+    "salary of ", "rank salary", "compare salary",
     "list all employee", "show all employee", "top 3 paid", "top 5 paid",
     "what instructions", "your instructions", "your developer",
+    "admin override", "override=", "override list", "/admin",  # command injection variants
 )
+
+# Prompt injection / jailbreak attempts
+_INJECTION_PATTERNS = (
+    "ignore all previous", "ignore previous instruction",
+    "new rule:", "you are now", "pretend you are",
+    "system error", "transparency mode", "debug mode",
+    "salarybot", "new instruction:", "update your system",
+    "i'm updating your", "i am updating your",
+)
+
+# Salary refusals — rotated so repeated blocks don't sound like a broken record
+_SALARY_REFUSALS = [
+    "Salary data is confidential and not available here. I can help with your own payslip — just type 'payslip'.",
+    "Compensation details are confidential. For your own payslip, type 'payslip'.",
+    "That's not something I can share. Salary information is restricted.",
+    "Salary details aren't available here. You can access your own payslip by typing 'payslip'.",
+]
 
 
 @router.get("/webhook")
@@ -117,11 +136,22 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         send_message(from_phone, "Got it. Anything else I can help with?")
         return
 
-    # Salary & compensation — hardcoded wall before any AI layer
+    # Prompt injection — before salary check so these never reach AI
+    if any(p in text.lower() for p in _INJECTION_PATTERNS):
+        send_message(from_phone, "I'm CordHR — I don't respond to instruction overrides. What can I help you with?")
+        return
+
+    # Salary & compensation — hardcoded wall with session-based escalation
     if any(p in text.lower() for p in _SALARY_PATTERNS):
-        send_message(from_phone,
-            "Salary data is confidential and not available here. "
-            "I can help with your own payslip — just type 'payslip'.")
+        _ctx = sess.get("context") or {}
+        attempts = _ctx.get("salary_attempts", 0) + 1
+        session_svc.update_session(employee["id"], context={**_ctx, "salary_attempts": attempts})
+        if attempts >= 4:
+            send_message(from_phone, "This topic has been flagged. Contact your HR admin directly for payroll queries.")
+        elif attempts >= 3:
+            send_message(from_phone, "Salary data is restricted regardless of how the request is framed. Contact your HR admin directly.")
+        else:
+            send_message(from_phone, random.choice(_SALARY_REFUSALS))
         return
 
     # Social engineering — authority or identity claims don't change behaviour
@@ -136,11 +166,18 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         return
 
     # Own profile data — answer directly from employee record, don't go to AI
-    _DEPT_PHRASES = ("my department", "what department", "which department am i", "what team am i", "which team am i")
+    _DEPT_PHRASES = (
+        "my department", "my dept", "what department", "what dept",
+        "which department am i", "which dept am i", "what team am i", "which team am i",
+        "whats my dept", "what's my dept", "whats my department",
+    )
     if any(p in text.lower() for p in _DEPT_PHRASES):
-        dept = employee.get("department") or "not on file"
+        dept = employee.get("department")
         role = employee.get("role", "staff").replace("_", " ").title()
-        send_message(from_phone, f"You're in *{dept}* — role: {role}.")
+        if dept:
+            send_message(from_phone, f"You're in *{dept}* — role: {role}.")
+        else:
+            send_message(from_phone, "Your department isn't set in the system yet. Ask your HR admin to update your profile.")
         return
 
     # Chat privacy — hardcoded, not a policy question
