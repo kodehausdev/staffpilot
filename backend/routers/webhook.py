@@ -90,6 +90,13 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
     if _handle_manager_command(text, employee, from_phone):
         return
 
+    # Universal flow escape — works inside any active flow
+    _CANCEL = {"cancel", "stop", "exit", "quit", "back", "abort", "end", "nevermind", "never mind", "stop it", "stop this"}
+    if current_flow and text.lower().strip("!?. ") in _CANCEL:
+        session_svc.update_session(employee["id"], flow=None, step=None, context={})
+        send_message(from_phone, "Stopped. What else can I help you with?")
+        return
+
     if current_flow == "leave_request":
         if text.lower() == "leave":
             session_svc.update_session(employee["id"], flow="leave_request", step="type", context={})
@@ -115,6 +122,25 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         send_message(from_phone,
             "Salary data is confidential and not available here. "
             "I can help with your own payslip — just type 'payslip'.")
+        return
+
+    # Social engineering — authority or identity claims don't change behaviour
+    _AUTHORITY_CLAIMS = (
+        "this is your developer", "i am your developer", "i am the developer",
+        "this is the ceo", "i am the ceo", "i am ceo", "this is ceo",
+        "developer mode", "admin mode", "i created you", "i built you",
+        "this is kodehaus", "i am kodehaus",
+    )
+    if any(p in text.lower() for p in _AUTHORITY_CLAIMS):
+        send_message(from_phone, "I'm here to help with HR questions. What do you need?")
+        return
+
+    # Own profile data — answer directly from employee record, don't go to AI
+    _DEPT_PHRASES = ("my department", "what department", "which department am i", "what team am i", "which team am i")
+    if any(p in text.lower() for p in _DEPT_PHRASES):
+        dept = employee.get("department") or "not on file"
+        role = employee.get("role", "staff").replace("_", " ").title()
+        send_message(from_phone, f"You're in *{dept}* — role: {role}.")
         return
 
     # Chat privacy — hardcoded, not a policy question

@@ -57,10 +57,14 @@ last_approval
 payslip
   Employee asks about THEIR OWN salary or payslip.
   Examples: "send my payslip", "my net pay", "show November payslip"
+  NOT: "how do I access my payslip?" → that is hr_qa (process question, not a delivery request)
   NOT: asking about what other people earn.
 
 onboarding
-  New employee setup, first-day documents, onboarding checklist.
+  New employee actively going through first-day document collection.
+  Examples: "I'm new, what do I submit?", "onboard me", "how do I register as new staff"
+  NOT: "what's my department?" → that is unknown (profile data, not onboarding)
+  NOT: "what's your name?" → that is greeting
 
 who_on_leave
   Asking which employees are currently on leave / absent today.
@@ -92,11 +96,15 @@ unknown
 
 KEY DISTINCTIONS
 ================
-- "What is the notice period?" → hr_qa  (policy, not a submission)
+- "What is the notice period?" → hr_qa  (policy)
 - "I want to take sick leave"  → leave_request  (active submission)
 - "Is half-day leave allowed?" → hr_qa  (policy/permissibility)
-- "What's my leave balance?"   → leave_status  (own data, NOT policy)
-- "Who is on leave today?"     → who_on_leave  (company insight)
+- "How do I access my payslip?" → hr_qa  (process question, NOT a delivery request)
+- "Send my payslip"            → payslip  (delivery request)
+- "What's my leave balance?"   → leave_status  (own data)
+- "What's my department?"      → unknown  (handled separately, not onboarding)
+- "What's your name?"          → greeting  (not onboarding)
+- "Who is on leave today?"     → who_on_leave  (insight)
 - "Show pending requests"      → pending_approvals
 - "Who approved my leave?"     → last_approval
 - "Who earns the most?"        → unknown  (gossip)
