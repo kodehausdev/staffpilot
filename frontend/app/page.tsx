@@ -66,28 +66,57 @@ const FEATURES = [
 const PLANS = [
   {
     name: 'Starter',
-    monthly: 50000,
-    annual: 500000,
-    staff: 30,
-    features: ['Leave management', 'Payslips via WhatsApp', 'HR Q&A', 'Admin dashboard', 'Email support'],
+    tagline: 'Stop answering the same HR questions every day.',
+    monthly: 35000,
+    annual: 350000,
+    staff: 10,
+    overage: 2000,
+    features: [
+      'WhatsApp HR bot',
+      'Leave requests & tracking',
+      'Payslips on WhatsApp',
+      'Company handbook Q&A',
+      'Admin dashboard',
+      'Email support',
+    ],
     popular: false,
     cta: 'Start free',
   },
   {
     name: 'Growth',
+    tagline: 'Run HR like a system, not a struggle.',
     monthly: 150000,
     annual: 1500000,
-    staff: 150,
-    features: ['Everything in Starter', 'Up to 150 employees', 'Priority support', 'Custom onboarding flow', 'Manager approval workflows'],
+    staff: 50,
+    overage: 1500,
+    features: [
+      'Everything in Starter',
+      'Up to 50 employees',
+      'Advanced multi-doc RAG',
+      'Role-based access (Admin, HR, Manager)',
+      'HR document management',
+      'Activity logs',
+      'Priority support',
+    ],
     popular: true,
     cta: 'Start free',
   },
   {
-    name: 'Enterprise',
-    monthly: null,
-    annual: null,
+    name: 'Scale',
+    tagline: 'Turn HR into infrastructure.',
+    monthly: 400000,
+    annual: 4000000,
     staff: null,
-    features: ['Unlimited employees', 'Dedicated support', 'Custom integrations', 'SLA guarantee', 'On-site onboarding'],
+    overage: null,
+    features: [
+      'Everything in Growth',
+      'Unlimited employees',
+      'Custom approval workflows',
+      'Founder/exec WhatsApp commands',
+      'Analytics & leave trend insights',
+      'API access',
+      'Dedicated onboarding',
+    ],
     popular: false,
     cta: 'Contact us',
   },
@@ -283,7 +312,7 @@ export default function LandingPage() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 items-start">
-            {PLANS.map(({ name, monthly, annual: yr, staff, features, popular, cta }) => (
+            {PLANS.map(({ name, tagline, monthly, annual: yr, staff, overage, features, popular, cta }) => (
               <div
                 key={name}
                 className={`relative rounded-2xl border p-7 flex flex-col ${
@@ -300,29 +329,30 @@ export default function LandingPage() {
                   </div>
                 )}
 
-                <p className="text-sm font-semibold text-sp-muted mb-3">{name}</p>
+                <p className="text-sm font-semibold text-sp-text mb-0.5">{name}</p>
+                <p className="text-[11px] text-sp-muted mb-4 leading-snug">{tagline}</p>
 
-                {monthly !== null ? (
-                  <div className="mb-1">
-                    <span className="text-4xl font-black text-sp-text">
-                      {fmt(annual ? yr! : monthly)}
-                    </span>
-                    <span className="text-sp-muted text-sm ml-1">
-                      /{annual ? 'yr' : 'mo'}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="mb-1">
-                    <span className="text-4xl font-black text-sp-text">Custom</span>
-                  </div>
-                )}
+                <div className="mb-1">
+                  <span className="text-4xl font-black text-sp-text">
+                    {fmt(annual ? yr : monthly)}
+                  </span>
+                  <span className="text-sp-muted text-sm ml-1">
+                    /{annual ? 'yr' : 'mo'}
+                    {name === 'Scale' && '+'}
+                  </span>
+                </div>
 
-                {staff && (
-                  <p className="text-xs text-sp-muted mb-6 flex items-center gap-1">
-                    <Users size={11} /> Up to {staff} employees
+                <div className="flex items-center gap-3 mb-6">
+                  <p className="text-xs text-sp-muted flex items-center gap-1">
+                    <Users size={11} />
+                    {staff ? `Up to ${staff} employees` : 'Unlimited employees'}
                   </p>
-                )}
-                {!staff && <p className="text-xs text-sp-muted mb-6">Unlimited employees</p>}
+                  {overage && (
+                    <p className="text-[10px] text-sp-muted bg-white/[0.04] border border-white/[0.06] px-2 py-0.5 rounded-full">
+                      +{fmt(overage)}/extra
+                    </p>
+                  )}
+                </div>
 
                 <ul className="space-y-2.5 mb-8 flex-1">
                   {features.map(f => (
@@ -335,7 +365,7 @@ export default function LandingPage() {
 
                 {cta === 'Contact us' ? (
                   <a
-                    href="mailto:hi.kodehaus@gmail.com?subject=CordHR Enterprise"
+                    href="mailto:hi.kodehaus@gmail.com?subject=CordHR Scale"
                     className="w-full text-center py-2.5 rounded-xl border border-white/[0.06] text-sm text-sp-muted hover:text-sp-text hover:border-white/20 transition-colors font-medium"
                   >
                     Contact us
