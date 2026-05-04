@@ -251,7 +251,7 @@ function EnterpriseCard() {
       <p className="text-xs text-sp-muted mt-0.5">Unlimited staff</p>
       <p className="text-xs text-sp-accent mt-1 font-medium">Custom pricing</p>
       <a
-        href="mailto:hi.kodehaus@gmail.com?subject=StaffPilot Enterprise"
+        href="mailto:hi.kodehaus@gmail.com?subject=CordHR Enterprise"
         className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-sp-border px-3 py-1.5 text-xs text-sp-muted transition-colors hover:border-sp-accent hover:text-sp-accent"
       >
         Contact sales

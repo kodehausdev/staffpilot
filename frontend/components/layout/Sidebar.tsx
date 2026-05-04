@@ -44,7 +44,7 @@ export default function Sidebar() {
           <div className="w-7 h-7 rounded-lg bg-sp-accent flex items-center justify-center shrink-0">
             <MessageSquare size={13} className="text-white" />
           </div>
-          <span className="font-semibold text-sp-text tracking-tight text-sm">StaffPilot</span>
+          <span className="font-semibold text-sp-text tracking-tight text-sm">CordHR</span>
         </div>
       </div>
 

@@ -67,7 +67,7 @@ function LoginForm() {
         <div className="w-9 h-9 rounded-xl bg-sp-accent flex items-center justify-center">
           <MessageSquare size={18} className="text-white" />
         </div>
-        <span className="text-xl font-semibold text-sp-text tracking-tight">StaffPilot</span>
+        <span className="text-xl font-semibold text-sp-text tracking-tight">CordHR</span>
       </div>
 
       <div className="bg-sp-surface border border-sp-border rounded-2xl p-7">

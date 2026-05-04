@@ -213,7 +213,7 @@ export default function PayslipsPage() {
     const blob = new Blob([csv], { type: 'text/csv' })
     const url  = URL.createObjectURL(blob)
     const a    = document.createElement('a')
-    a.href = url; a.download = `staffpilot_${importFormat}_template.csv`; a.click()
+    a.href = url; a.download = `cordhr_${importFormat}_template.csv`; a.click()
     URL.revokeObjectURL(url)
   }
 

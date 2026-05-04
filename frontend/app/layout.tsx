@@ -3,8 +3,8 @@ import './globals.css'
 import { AuthProvider } from '@/lib/auth-context'
 
 export const metadata: Metadata = {
-  title: 'StaffPilot — HR Dashboard',
-  description: 'AI-powered WhatsApp HR bot admin panel',
+  title: 'CordHR — HR Dashboard',
+  description: 'AI-powered WhatsApp HR assistant for modern teams',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
