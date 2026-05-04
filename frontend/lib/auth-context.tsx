@@ -60,11 +60,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
+    // Hard deadline — no matter what hangs, spinner stops after 6s
+    const deadline = setTimeout(() => {
+      setLoading(false)
+      setTenantLoading(false)
+    }, 6000)
+
     async function init() {
       try {
         const { data: { session } } = await supabase.auth.getSession()
         setUser(session?.user ?? null)
-        setLoading(false)  // auth resolved — unblock the UI
+        setLoading(false)
         if (session?.user) {
           await loadTenantAdmin(session.user.id)
         } else {
@@ -74,6 +80,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('[auth] init failed:', e)
         setLoading(false)
         setTenantLoading(false)
+      } finally {
+        clearTimeout(deadline)
       }
     }
 
