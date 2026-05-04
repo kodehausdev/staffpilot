@@ -28,32 +28,78 @@ def generate(prompt: str, system: str = None, temperature: float = 0.3) -> str:
 
 def classify_intent(message: str) -> str:
     """
-    Classify a WhatsApp message into a flow intent.
-    Returns one of: leave_request | hr_qa | payslip | onboarding | greeting | unknown
+    Classify a WhatsApp message into one of three layers plus specific intents.
+
+    RAG layer    → hr_qa
+    Action layer → leave_request | leave_status | last_approval | payslip | onboarding
+    Insight layer→ who_on_leave | pending_approvals | leave_analytics
+    Meta         → greeting | unknown
     """
     client = _get_client()
-    prompt = f"""Classify this Nigerian employee WhatsApp message into exactly one of these intents:
-leave_request, hr_qa, payslip, onboarding, greeting, unknown
+    prompt = f"""Classify this Nigerian employee WhatsApp message into exactly one intent label.
 
-Rules:
-- leave_request: employee wants to ACTIVELY START a leave application right now ("I want leave", "can I take sick leave", "apply for annual leave", "I need tomorrow off"). The employee is ready to submit, not just asking questions.
-- hr_qa: questions about company policy, rules, benefits, entitlements, or workplace procedures — including HMO, pension, notice periods, allowances, disciplinary rules, misconduct, perks, resignation. ALSO: questions about how leave works, whether something is permissible, or what the process is — even if they mention leave days or balances.
-- payslip: employee is asking about THEIR OWN salary or payslip ("send my payslip", "when is my salary", "what is my net pay", "show my payslip"). NOT gossip or curiosity about what OTHER people earn.
-- onboarding: new employee setup, first day, documents to submit
-- greeting: hi, hello, good morning, how are you
-- unknown: personal chat, off-topic questions, gibberish, slang with no HR meaning, questions about other people's salaries
+INTENTS AND RULES
+=================
 
-Key distinctions:
-- "What is the notice period?" = hr_qa (policy question), NOT leave_request
-- "I want to take sick leave" = leave_request (actual request to submit now)
-- "I have accrued 17.5 days, is half-day leave permissible?" = hr_qa (policy question, NOT a leave request — they are asking HOW, not submitting)
-- "can I take 3.5 days for my nephew's graduation?" = hr_qa (asking about policy/permissibility)
-- "do I need to submit a letter?" = hr_qa (process question)
-- "who earns the most in the office?" = unknown (gossip, not their own payslip)
-- "who dey collect salary pass?" = unknown (gossip about others)
-- "send my payslip" = payslip (their own)
-- "my manager is harrassing me" = hr_qa
-- "I want to japa" = hr_qa (resignation/notice period query)
+leave_request
+  Employee is ACTIVELY SUBMITTING a new leave application right now.
+  Examples: "I want leave", "apply for sick leave", "I need tomorrow off", "take annual leave next week"
+
+leave_status
+  Employee asks about THEIR OWN leave balance, history, or remaining days.
+  Examples: "what's my leave balance", "how many days do I have left", "show my leave history",
+            "have I taken any leave this year", "my leave summary"
+
+last_approval
+  Employee asks who approved or rejected their last (or a specific) leave request.
+  Examples: "who approved my leave", "who rejected my request", "who actioned my last leave"
+
+payslip
+  Employee asks about THEIR OWN salary or payslip.
+  Examples: "send my payslip", "my net pay", "show November payslip"
+  NOT: asking about what other people earn.
+
+onboarding
+  New employee setup, first-day documents, onboarding checklist.
+
+who_on_leave
+  Asking which employees are currently on leave / absent today.
+  Examples: "who is on leave", "who is not in office", "who is absent today", "who dey go leave"
+
+pending_approvals
+  Asking to see pending / unactioned leave requests.
+  Examples: "show pending requests", "any pending leave", "who hasn't been approved",
+            "pending approvals", "leave requests waiting"
+
+leave_analytics
+  Asking for department-level or company-wide leave statistics / trends.
+  Examples: "which department takes the most leave", "leave trends", "leave stats this year",
+            "department with highest leave", "leave report"
+
+hr_qa
+  Questions about company POLICY, rules, benefits, entitlements, or workplace procedures —
+  including HMO, pension, notice period, allowances, disciplinary rules, perks, resignation,
+  remote work, misconduct. Also: hypothetical/permissibility questions about leave.
+  Examples: "how many sick days am I entitled to?", "what is the notice period?",
+            "is half-day leave allowed?", "HMO cover dependants?",
+            "I want to japa — what's the process?"
+
+greeting
+  Hi, hello, good morning, start, menu.
+
+unknown
+  Off-topic, gossip about other people's salaries, gibberish, slang with no HR meaning.
+
+KEY DISTINCTIONS
+================
+- "What is the notice period?" → hr_qa  (policy, not a submission)
+- "I want to take sick leave"  → leave_request  (active submission)
+- "Is half-day leave allowed?" → hr_qa  (policy/permissibility)
+- "What's my leave balance?"   → leave_status  (own data, NOT policy)
+- "Who is on leave today?"     → who_on_leave  (company insight)
+- "Show pending requests"      → pending_approvals
+- "Who approved my leave?"     → last_approval
+- "Who earns the most?"        → unknown  (gossip)
 
 Reply with ONLY the intent label, nothing else.
 
@@ -65,7 +111,12 @@ Message: "{message}"
         config=types.GenerateContentConfig(temperature=0.0),
     )
     intent = response.text.strip().lower()
-    valid = {"leave_request", "hr_qa", "payslip", "onboarding", "greeting", "unknown"}
+    valid = {
+        "leave_request", "leave_status", "last_approval",
+        "payslip", "onboarding", "hr_qa", "greeting",
+        "who_on_leave", "pending_approvals", "leave_analytics",
+        "unknown",
+    }
     return intent if intent in valid else "unknown"
 
 

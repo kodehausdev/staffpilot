@@ -8,7 +8,7 @@ import re
 from fastapi import APIRouter, Request, HTTPException, Query, BackgroundTasks
 from db.supabase_client import get_supabase
 from services import session as session_svc
-from services import leave, qa, payslip, onboarding
+from services import leave, qa, payslip, onboarding, insights
 from services.gemini import classify_intent
 from services.whatsapp import send_message, parse_webhook
 from services.gating import whatsapp_gate
@@ -132,17 +132,26 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
     _GREETING_WORDS = {"hi", "hello", "hey", "start", "begin", "menu"}
     _is_greeting = intent == "greeting" or (bool(_text_words & _GREETING_WORDS) and len(_text_words) <= 3)
 
+    role = employee.get("role", "staff")  # staff | manager | hr_admin
+
+    # ── GREETING ────────────────────────────────────────────────────────────
     if _is_greeting:
         name = employee.get("name") or "there"
         send_message(from_phone, GREETING_MSG.format(name=name))
+
+    # ── ACTION LAYER — user-specific data ───────────────────────────────────
 
     elif intent == "leave_request" or text.lower() == "leave":
         session_svc.update_session(employee["id"], flow="leave_request", step="type")
         leave.handle(employee, sess, text)
 
-    elif intent == "hr_qa":
-        last = (sess.get("context") or {}).get("last_message")
-        qa.handle(employee, text, last_message=last)
+    elif intent == "leave_status":
+        data = insights.get_own_leave_status(employee["id"], employee["tenant_id"])
+        send_message(from_phone, insights.fmt_own_leave_status(data))
+
+    elif intent == "last_approval":
+        record = insights.get_last_leave_approval(employee["id"], employee["tenant_id"])
+        send_message(from_phone, insights.fmt_last_approval(record))
 
     elif intent == "payslip" or text.lower() == "payslip":
         gate_msg = whatsapp_gate(employee["tenant_id"], "payslips")
@@ -160,8 +169,39 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         else:
             onboarding.handle(employee, sess, text)
 
+    # ── INSIGHT LAYER — company intelligence, role-gated ────────────────────
+
+    elif intent == "who_on_leave":
+        # Any employee can know who's absent — it's not secret
+        records = insights.get_currently_on_leave(employee["tenant_id"])
+        send_message(from_phone, insights.fmt_currently_on_leave(records))
+
+    elif intent == "pending_approvals":
+        if role not in ("manager", "hr_admin"):
+            send_message(from_phone,
+                "Pending approvals are only visible to managers and HR admins. "
+                "To check your own requests, type 'my leave status'. 🤝")
+        else:
+            records = insights.get_pending_requests(employee["tenant_id"])
+            send_message(from_phone, insights.fmt_pending_requests(records))
+
+    elif intent == "leave_analytics":
+        if role != "hr_admin":
+            send_message(from_phone,
+                "Leave analytics are only available to HR admins. "
+                "Ask your HR admin to pull the report. 📊")
+        else:
+            dept_days = insights.get_leave_analytics(employee["tenant_id"])
+            send_message(from_phone, insights.fmt_leave_analytics(dept_days))
+
+    # ── RAG LAYER — policy and handbook questions ────────────────────────────
+
+    elif intent == "hr_qa":
+        last = (sess.get("context") or {}).get("last_message")
+        qa.handle(employee, text, last_message=last)
+
     elif len(text.split()) >= 3:
-        # Long enough to attempt RAG — might be a policy question phrased unusually
+        # Long enough to attempt RAG — policy question phrased unusually
         last = (sess.get("context") or {}).get("last_message")
         qa.handle(employee, text, last_message=last)
 
