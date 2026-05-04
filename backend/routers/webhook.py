@@ -17,12 +17,23 @@ from config import get_settings
 router = APIRouter()
 
 GREETING_MSG = (
-    "👋 Hi {name}! I'm your HR assistant.\n\n"
-    "I can help you with:\n"
+    "Hi {name} 👋 I'm CordHR — your company HR assistant.\n\n"
+    "I can help with:\n"
     "• *Leave requests* — type 'leave'\n"
     "• *HR policy questions* — just ask\n"
-    "• *Payslip info* — type 'payslip'\n\n"
+    "• *Your payslip* — type 'payslip'\n\n"
     "What do you need?"
+)
+
+# Salary & compensation — hardcoded wall, never delegated to RAG or DB
+_SALARY_PATTERNS = (
+    "all salaries", "all salary", "list salaries", "list salary",
+    "employee salary", "payroll list", "highest paid", "top paid",
+    "who earns", "earns most", "earns the most", "total payroll",
+    "payroll cost", "average salary", "salary data", "sample salary",
+    "salary of ", "rank salary", "compare salary", "override=", "/admin",
+    "list all employee", "show all employee", "top 3 paid", "top 5 paid",
+    "what instructions", "your instructions", "your developer",
 )
 
 
@@ -96,21 +107,29 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         "ok", "okay", "k", "fine", "aight", "alright", "cool", "got it",
     }
     if text.lower().strip("!?. ") in _GRATITUDE:
-        send_message(from_phone, "No wahala! Anything else I can help with?")
+        send_message(from_phone, "Got it. Anything else I can help with?")
         return
 
-    # Chat privacy — hardcoded system truth, not a policy question
+    # Salary & compensation — hardcoded wall before any AI layer
+    if any(p in text.lower() for p in _SALARY_PATTERNS):
+        send_message(from_phone,
+            "Salary data is confidential and not available here. "
+            "I can help with your own payslip — just type 'payslip'.")
+        return
+
+    # Chat privacy — hardcoded, not a policy question
     _PRIVACY_PHRASES = (
         "is this chat", "this chat save", "will you report", "you go report",
         "go you tell", "will hr know", "is this private", "is this confidential",
         "you dey record", "you go record", "snitch", "will hr tell",
     )
     if any(p in text.lower() for p in _PRIVACY_PHRASES):
-        send_message(from_phone, "Your chats here are private — I don't report your questions to HR or anyone else. Ask freely. 🤝")
+        send_message(from_phone,
+            "Your chats here are private — I don't share your questions with HR or anyone else. "
+            "Ask freely. 🤝")
         return
 
-    # If the employee just hit a gate and is asking "why", explain the plan restriction
-    # — do this before intent classification so QA can't hallucinate a workaround
+    # Plan gate follow-up — explain restriction before AI can confuse it
     _WHY_WORDS = {"why", "wetin", "how come", "explain", "reason", "why not", "why cant", "why can't"}
     _ctx = sess.get("context") or {}
     _last_gate = _ctx.get("last_gate")
@@ -120,7 +139,7 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         send_message(
             from_phone,
             f"{_feature_label} isn't included in your company's current plan. "
-            f"Only your HR admin can upgrade — once they do, you'll have full access. 🤝"
+            f"Your HR admin can enable it with a plan upgrade."
         )
         session_svc.update_session(employee["id"], context={})
         return
@@ -172,15 +191,19 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
     # ── INSIGHT LAYER — company intelligence, role-gated ────────────────────
 
     elif intent == "who_on_leave":
-        # Any employee can know who's absent — it's not secret
-        records = insights.get_currently_on_leave(employee["tenant_id"])
-        send_message(from_phone, insights.fmt_currently_on_leave(records))
+        if role not in ("manager", "hr_admin"):
+            send_message(from_phone,
+                "Company leave information is only available to managers and HR admins. "
+                "You can check your own leave status by typing 'my leave'.")
+        else:
+            records = insights.get_currently_on_leave(employee["tenant_id"])
+            send_message(from_phone, insights.fmt_currently_on_leave(records))
 
     elif intent == "pending_approvals":
         if role not in ("manager", "hr_admin"):
             send_message(from_phone,
                 "Pending approvals are only visible to managers and HR admins. "
-                "To check your own requests, type 'my leave status'. 🤝")
+                "Type 'my leave' to check your own requests.")
         else:
             records = insights.get_pending_requests(employee["tenant_id"])
             send_message(from_phone, insights.fmt_pending_requests(records))
@@ -188,8 +211,7 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
     elif intent == "leave_analytics":
         if role != "hr_admin":
             send_message(from_phone,
-                "Leave analytics are only available to HR admins. "
-                "Ask your HR admin to pull the report. 📊")
+                "Leave analytics are only available to HR admins.")
         else:
             dept_days = insights.get_leave_analytics(employee["tenant_id"])
             send_message(from_phone, insights.fmt_leave_analytics(dept_days))
@@ -206,7 +228,7 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         qa.handle(employee, text, last_message=last)
 
     else:
-        send_message(from_phone, "That's not really my lane 😅 — I handle leave, payslips, and HR policy questions. What can I help with?")
+        send_message(from_phone, "I can help with leave, payslips, and HR policy questions. What do you need?")
 
 
 def _get_tenant_by_number_id(phone_number_id: str) -> dict | None:

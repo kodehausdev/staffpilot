@@ -1,7 +1,7 @@
-﻿# StaffPilot — CLAUDE.md
+﻿# CordHR — CLAUDE.md
 
 AI-powered WhatsApp HR & Operations Bot for Nigerian SMEs.
-Built by Kodehaus (Pete / Seyi Fatoki), Abuja Nigeria.
+Brand: CordHR (pronounced "cordial") by Optipropose Studio, Abuja Nigeria.
 
 ---
 
@@ -29,7 +29,7 @@ C:\Users\SEYI\FlightDeck\
 | Admin UI     | Next.js 16, Tailwind, TypeScript          |
 | Auth         | Supabase Auth (email/password)            |
 | Billing      | Paystack                                  |
-| Hosting API  | AWS App Runner                            |
+| Hosting API  | Railway (auto-deploys from main)          |
 | Hosting UI   | Vercel                                    |
 
 ---
