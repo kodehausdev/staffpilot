@@ -33,8 +33,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  // Redirect logged-in users away from login page
-  if (path === '/login' && session) {
+  // Redirect logged-in users away from login page and landing page
+  if ((path === '/login' || path === '/') && session) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
@@ -42,6 +42,6 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/login'],
+  matcher: ['/dashboard/:path*', '/login', '/'],
 }
 
