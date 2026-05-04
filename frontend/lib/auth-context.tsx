@@ -40,15 +40,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function loadTenantAdmin(userId: string) {
     setTenantLoading(true)
+    const ac = new AbortController()
+    const timer = setTimeout(() => ac.abort(), 6000)
     try {
       const { data } = await supabase
         .from('tenant_admins')
         .select('tenant_id, role, tenants(*)')
         .eq('user_id', userId)
         .limit(1)
+        .abortSignal(ac.signal)
+      clearTimeout(timer)
       setTenantAdmin((data?.[0] ?? null) as TenantAdmin | null)
     } catch (e) {
-      console.error('[auth] loadTenantAdmin failed:', e)
+      clearTimeout(timer)
+      console.error('[auth] loadTenantAdmin:', e)
     } finally {
       setTenantLoading(false)
     }
