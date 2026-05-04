@@ -21,28 +21,37 @@ type TenantAdmin = {
 }
 
 type AuthContextType = {
-  user:        User | null
-  tenantAdmin: TenantAdmin | null
-  loading:     boolean
-  signOut:     () => Promise<void>
+  user:          User | null
+  tenantAdmin:   TenantAdmin | null
+  loading:       boolean
+  tenantLoading: boolean
+  signOut:       () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null, tenantAdmin: null, loading: true, signOut: async () => {}
+  user: null, tenantAdmin: null, loading: true, tenantLoading: true, signOut: async () => {}
 })
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser]               = useState<User | null>(null)
   const [tenantAdmin, setTenantAdmin] = useState<TenantAdmin | null>(null)
   const [loading, setLoading]         = useState(true)
+  const [tenantLoading, setTenantLoading] = useState(true)
 
   async function loadTenantAdmin(userId: string) {
-    const { data } = await supabase
-      .from('tenant_admins')
-      .select('tenant_id, role, tenants(*)')
-      .eq('user_id', userId)
-      .limit(1)
-    setTenantAdmin((data?.[0] ?? null) as TenantAdmin | null)
+    setTenantLoading(true)
+    try {
+      const { data } = await supabase
+        .from('tenant_admins')
+        .select('tenant_id, role, tenants(*)')
+        .eq('user_id', userId)
+        .limit(1)
+      setTenantAdmin((data?.[0] ?? null) as TenantAdmin | null)
+    } catch (e) {
+      console.error('[auth] loadTenantAdmin failed:', e)
+    } finally {
+      setTenantLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -50,11 +59,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const { data: { session } } = await supabase.auth.getSession()
         setUser(session?.user ?? null)
-        if (session?.user) await loadTenantAdmin(session.user.id)
+        setLoading(false)  // auth resolved — unblock the UI
+        if (session?.user) {
+          await loadTenantAdmin(session.user.id)
+        } else {
+          setTenantLoading(false)
+        }
       } catch (e) {
         console.error('[auth] init failed:', e)
-      } finally {
         setLoading(false)
+        setTenantLoading(false)
       }
     }
 
@@ -67,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await loadTenantAdmin(session.user.id)
       } else {
         setTenantAdmin(null)
+        setTenantLoading(false)
       }
     })
 
@@ -79,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, tenantAdmin, loading, signOut }}>
+    <AuthContext.Provider value={{ user, tenantAdmin, loading, tenantLoading, signOut }}>
       {children}
     </AuthContext.Provider>
   )
