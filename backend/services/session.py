@@ -46,13 +46,24 @@ def update_session(
     sb.table("sessions").update(payload).eq("employee_id", employee_id).execute()
 
 
+
+# Context keys that outlive any single flow — guardrail counters and
+# gate-followup state, not flow-scoped draft data. clear_session() must not
+# wipe these, or e.g. answering a payslip question resets the salary-wall
+# escalation counter back to zero.
+_CROSS_CUTTING_KEYS = ("salary_attempts", "last_gate")
+
+
 def clear_session(employee_id: str) -> None:
-    """Reset after a flow completes."""
+    """Reset flow state after a flow completes — preserves cross-cutting
+    guardrail context (see _CROSS_CUTTING_KEYS) which isn't flow-scoped."""
     sb = get_supabase()
+    old_ctx = get_session(employee_id).get("context") or {}
+    preserved = {k: v for k, v in old_ctx.items() if k in _CROSS_CUTTING_KEYS}
     sb.table("sessions").update({
         "current_flow": None,
         "flow_step":    None,
-        "context":      {},
+        "context":      preserved,
         "updated_at":   "now()",
     }).eq("employee_id", employee_id).execute()
 
