@@ -26,15 +26,19 @@ function SuccessContent() {
     }
     fetch(`/api/billing/verify?reference=${encodeURIComponent(reference)}`)
       .then(async r => ({ ok: r.ok, data: await r.json() }))
-      .then(({ ok, data }) => {
+      .then(async ({ ok, data }) => {
         if (!ok) {
           setStatus('error')
           setError(data.error ?? 'Payment could not be verified.')
           return
         }
+        // Wait for the refreshed plan to actually land in context before the
+        // "Go to dashboard" button becomes clickable — otherwise a fast click
+        // can navigate to Settings before the new plan is there to show,
+        // and it looks stale until a hard reload re-fetches from scratch.
+        await refreshTenantAdmin()
         setPlan(data.plan ?? '')
         setStatus('success')
-        refreshTenantAdmin()
       })
       .catch(() => {
         setStatus('error')
