@@ -12,6 +12,7 @@ const supabase = createBrowserClient(
 type TenantAdmin = {
   tenant_id: string
   role: string
+  full_name: string | null
   tenants: {
     id: string
     name: string
@@ -22,15 +23,17 @@ type TenantAdmin = {
 }
 
 type AuthContextType = {
-  user:          User | null
-  tenantAdmin:   TenantAdmin | null
-  loading:       boolean
-  tenantLoading: boolean
-  signOut:       () => Promise<void>
+  user:               User | null
+  tenantAdmin:        TenantAdmin | null
+  loading:            boolean
+  tenantLoading:      boolean
+  signOut:            () => Promise<void>
+  refreshTenantAdmin: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null, tenantAdmin: null, loading: true, tenantLoading: true, signOut: async () => {}
+  user: null, tenantAdmin: null, loading: true, tenantLoading: true,
+  signOut: async () => {}, refreshTenantAdmin: async () => {},
 })
 
 
@@ -48,7 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data } = await supabase
         .from('tenant_admins')
-        .select('tenant_id, role, tenants(*)')
+        .select('tenant_id, role, full_name, tenants(*)')
         .eq('user_id', userId)
         .limit(1)
         .abortSignal(ac.signal)
@@ -99,8 +102,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.location.href = '/login'
   }
 
+  async function refreshTenantAdmin() {
+    if (user) await loadTenantAdmin(user.id)
+  }
+
   return (
-    <AuthContext.Provider value={{ user, tenantAdmin, loading, tenantLoading, signOut }}>
+    <AuthContext.Provider value={{ user, tenantAdmin, loading, tenantLoading, signOut, refreshTenantAdmin }}>
       {children}
     </AuthContext.Provider>
   )

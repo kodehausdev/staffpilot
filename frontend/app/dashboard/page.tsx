@@ -86,7 +86,7 @@ export default function DashboardPage() {
     </div>
   )
 
-  const firstName   = user?.email?.split('@')[0] ?? ''
+  const firstName   = tenantAdmin?.full_name?.trim().split(' ')[0] || user?.email?.split('@')[0] || ''
   const companyName = tenantAdmin?.tenants?.name ?? '—'
   const visibleDepts = deptExpanded ? deptBreakdown : deptBreakdown.slice(0, 4)
 

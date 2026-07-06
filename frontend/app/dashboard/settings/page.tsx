@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import { useTenant } from '@/lib/use-tenant'
 import { useAuth } from '@/lib/auth-context'
@@ -34,11 +33,9 @@ const PLAN_LIMITS: Record<string, { staff: number; price: string }> = {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
-  const { tenantAdmin, user }                                    = useAuth()
+  const { tenantAdmin, user, refreshTenantAdmin }                = useAuth()
   const { tenantId: hookTenantId, plan, loading: tenantLoading } = useTenant()
   const supabase                                                 = useMemo(() => createClient(), [])
-  const searchParams                                             = useSearchParams()
-  const router                                                   = useRouter()
 
   // Fallback to auth context if useTenant hasn't hydrated yet
   const tenantId = hookTenantId || tenantAdmin?.tenant_id || ''
@@ -49,32 +46,43 @@ export default function SettingsPage() {
   const [saved, setSaved]             = useState(false)
   const [error, setError]             = useState('')
   const [loading, setLoading]         = useState(true)
-  const [upgradeMsg, setUpgradeMsg]   = useState('')
   const [sdkReady, setSdkReady]       = useState(false)
   const [waConnected, setWaConnected] = useState(false)
   const [subscribeWarning, setSubscribeWarning] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [fullName, setFullName]         = useState('')
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [profileSaved, setProfileSaved]   = useState(false)
 
   const tenantCreatedAt = tenantAdmin?.tenants?.created_at
   const hoursLeft = tenantCreatedAt
     ? Math.max(0, 24 - Math.floor((Date.now() - new Date(tenantCreatedAt).getTime()) / 36e5))
     : null
 
-  // ── Paystack callback ──────────────────────────────────────────────────────
+  // ── Sync profile name from auth context once it loads ─────────────────────
   useEffect(() => {
-    const reference = searchParams.get('reference') || searchParams.get('trxref')
-    if (!reference) return
-    fetch(`/api/billing/verify?reference=${encodeURIComponent(reference)}`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.plan) {
-          setUpgradeMsg(`You're now on the ${data.plan} plan. Welcome!`)
-          router.refresh()
-        }
+    setFullName(tenantAdmin?.full_name ?? '')
+  }, [tenantAdmin?.full_name])
+
+  async function saveProfile(e: React.FormEvent) {
+    e.preventDefault()
+    setSavingProfile(true)
+    setProfileSaved(false)
+    try {
+      const res = await fetch('/api/profile/save', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ full_name: fullName }),
       })
-      .catch(() => {})
-    window.history.replaceState({}, '', '/dashboard/settings')
-  }, [searchParams, router])
+      if (res.ok) {
+        await refreshTenantAdmin()
+        setProfileSaved(true)
+        setTimeout(() => setProfileSaved(false), 3000)
+      }
+    } finally {
+      setSavingProfile(false)
+    }
+  }
 
   // ── Load tenant data ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -271,13 +279,6 @@ export default function SettingsPage() {
     <div>
       <PageHeader title="Settings" sub="Company configuration and billing" />
 
-      {upgradeMsg && (
-        <div className="mb-6 flex items-center gap-2.5 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400">
-          <CheckCircle2 size={16} className="shrink-0" />
-          {upgradeMsg}
-        </div>
-      )}
-
       <div className="space-y-6">
 
         {/* ── Company details ── */}
@@ -424,6 +425,28 @@ export default function SettingsPage() {
         {/* ── Account ── */}
         <div className="bento-luxury">
           <h2 className="text-sm font-semibold text-sp-text mb-3">Account</h2>
+
+          <form onSubmit={saveProfile} className="mb-4 pb-4 border-b border-sp-border/50 max-w-md">
+            <label className="text-xs text-sp-muted mb-1 block">Full name</label>
+            <div className="flex items-center gap-2">
+              <input
+                value={fullName}
+                onChange={e => setFullName(e.target.value)}
+                placeholder="What should we call you?"
+                className="input w-full"
+              />
+              <Button type="submit" variant="outline" size="sm" disabled={savingProfile || !fullName.trim()}>
+                {savingProfile ? 'Saving…' : 'Save'}
+              </Button>
+            </div>
+            {profileSaved && (
+              <p className="mt-1.5 text-[11px] text-green-400 flex items-center gap-1">
+                <CheckCircle2 size={11} /> Saved — your dashboard greeting will use this now.
+              </p>
+            )}
+            <p className="text-[11px] text-sp-muted mt-1">Used for your dashboard greeting only, not shared with staff.</p>
+          </form>
+
           <div className="space-y-1.5 text-sm">
             <div className="flex justify-between">
               <span className="text-sp-muted">Email</span>

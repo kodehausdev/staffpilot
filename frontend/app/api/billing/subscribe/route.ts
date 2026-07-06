@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
       email:       adminRow?.email ?? 'unknown@example.com',
       amount,
       metadata:    { tenant_id, plan },
-      callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings?upgraded=1`,
+      callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing/success`,
     }),
   })
 
