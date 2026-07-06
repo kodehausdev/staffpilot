@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { backendUrl } from '@/lib/utils'
 
 export async function POST(req: NextRequest) {
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL
   const adminKey   = process.env.BACKEND_ADMIN_KEY
 
   if (!adminKey) {
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
   let res: Response
   try {
-    res = await fetch(`${backendUrl}/admin/docs/upload`, {
+    res = await fetch(backendUrl('/admin/docs/upload'), {
       method:  'POST',
       headers: { 'X-Admin-Key': adminKey },
       body:    outgoing,

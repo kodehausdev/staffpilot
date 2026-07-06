@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { backendUrl } from '@/lib/utils'
 
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN ?? 'staffpilot_hookup'
-const BACKEND_URL  = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:8000'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const body = await req.text()
-  const res  = await fetch(`${BACKEND_URL}/webhook`, {
+  const res  = await fetch(backendUrl('/webhook'), {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { requireTenantAdmin } from '@/lib/supabase-route'
+import { backendUrl } from '@/lib/utils'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,8 +23,7 @@ export async function POST(req: NextRequest) {
   // If meta_code provided: exchange it for phone_number_id via backend
   if (meta_code) {
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
-      const res = await fetch(`${backendUrl}/settings/whatsapp/onboard`, {
+      const res = await fetch(backendUrl('/settings/whatsapp/onboard'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id, meta_code }),

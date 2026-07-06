@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireTenantAdmin } from '@/lib/supabase-route'
+import { backendUrl } from '@/lib/utils'
 
 export async function POST(req: NextRequest) {
   console.log('=== [NEXT.JS BRIDGE] CONNECT API HIT ===')
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Not authorized for this tenant' }, { status: 403 })
     }
 
-    const targetBackendUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/settings/whatsapp/onboard`
+    const targetBackendUrl = backendUrl('/settings/whatsapp/onboard')
     console.log('[NEXT.JS BRIDGE] Forwarding Request To FastAPI:', targetBackendUrl)
 
     // Forwarding payload securely to the FastAPI application layer

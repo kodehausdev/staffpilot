@@ -4,6 +4,14 @@ export function cn(...inputs: ClassValue[]) {
   return clsx(inputs)
 }
 
+// Backend base URL, trailing-slash-safe — a NEXT_PUBLIC_BACKEND_URL with (or
+// without) a trailing slash previously produced double-slash paths like
+// "https://host//billing/verify", which FastAPI 404s on rather than normalizing.
+export function backendUrl(path = ''): string {
+  const base = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000').replace(/\/+$/, '')
+  return path ? `${base}${path.startsWith('/') ? path : `/${path}`}` : base
+}
+
 export function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('en-NG', {
     day: 'numeric', month: 'short', year: 'numeric'
