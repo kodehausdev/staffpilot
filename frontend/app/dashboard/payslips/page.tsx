@@ -39,7 +39,9 @@ const FORMATS: Record<FormatKey, { label: string; columns: string[]; note: strin
 }
 
 // Normalise a parsed CSV row into a common shape
-function normaliseRow(row: Record<string, string>, format: FormatKey, employees: Employee[]) {
+type EmployeeLite = Pick<Employee, 'id' | 'name' | 'phone'>
+
+function normaliseRow(row: Record<string, string>, format: FormatKey, employees: EmployeeLite[]) {
   const v = (keys: string[]) => {
     for (const k of keys) {
       const val = row[k] ?? row[k.toLowerCase()]
@@ -120,7 +122,7 @@ export default function PayslipsPage() {
   const now = new Date()
 
   const [payslips, setPayslips]   = useState<Payslip[]>([])
-  const [employees, setEmployees] = useState<Employee[]>([])
+  const [employees, setEmployees] = useState<EmployeeLite[]>([])
   const [loading, setLoading]     = useState(true)
   const [showForm, setShowForm]       = useState(false)
   const [showImport, setShowImport]   = useState(false)
