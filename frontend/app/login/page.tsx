@@ -1,14 +1,17 @@
 'use client'
-import { useState, Suspense } from 'react'
+
+import { useState, Suspense, useMemo } from 'react'
 import { createClient } from '@/lib/supabase-server'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { MessageSquare, Eye, EyeOff, Loader2 } from 'lucide-react'
 
-function LoginForm() {
-  const router      = useRouter()
-  const params      = useSearchParams()
-  const next        = params.get('next') || '/dashboard'
-  const supabase    = createClient()
+function LoginFormContent() {
+  const router = useRouter()
+  const params = useSearchParams()
+  const next = params.get('next') || '/dashboard'
+  
+  // Safe client memoization to prevent rendering thread freeze
+  const supabase = useMemo(() => createClient(), [])
 
   const [mode, setMode]         = useState<'login' | 'signup'>('login')
   const [email, setEmail]       = useState('')
@@ -22,47 +25,59 @@ function LoginForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    setSuccess('')
     setLoading(true)
 
-    if (mode === 'login') {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) {
-        setError(error.message)
-      } else {
-        router.push(next)
-        router.refresh()
-      }
-    } else {
-      const { data, error: signupErr } = await supabase.auth.signUp({
-        email, password,
-        options: { data: { company_name: company } }
-      })
-      if (signupErr) {
-        setError(signupErr.message)
-      } else if (data.user) {
-        const res = await fetch('/api/auth/setup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id:  data.user.id,
-            email,
-            company:  company || email.split('@')[0],
-          }),
+    try {
+      if (mode === 'login') {
+        const { data, error: loginErr } = await supabase.auth.signInWithPassword({ 
+          email, 
+          password 
         })
-        if (res.ok) {
-          setSuccess('Account created! Check your email to confirm, then log in.')
-          setMode('login')
-        } else {
-          setError('Account created but setup failed. Contact support.')
+
+        if (loginErr) {
+          setError(loginErr.message)
+        } else if (data?.session) {
+          router.push(next)
+          router.refresh()
+        }
+      } else {
+        const { data, error: signupErr } = await supabase.auth.signUp({
+          email, 
+          password,
+          options: { data: { company_name: company } }
+        })
+
+        if (signupErr) {
+          setError(signupErr.message)
+        } else if (data?.user) {
+          const res = await fetch('/api/auth/setup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: data.user.id,
+              email,
+              company: company || email.split('@')[0],
+            }),
+          })
+          
+          if (res.ok) {
+            setSuccess('Account created! Check your email to confirm, then log in.')
+            setMode('login')
+          } else {
+            setError('Account created but setup failed. Contact support.')
+          }
         }
       }
+    } catch (err) {
+      setError('An unexpected network error occurred. Please try again.')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
     <div className="w-full max-w-sm">
-
       <div className="flex items-center gap-2.5 justify-center mb-8">
         <div className="w-9 h-9 rounded-xl bg-sp-accent flex items-center justify-center">
           <MessageSquare size={18} className="text-white" />
@@ -78,7 +93,7 @@ function LoginForm() {
           {mode === 'login' ? 'Sign in to your HR dashboard' : 'Get your company set up in 2 minutes'}
         </p>
 
-        {error   && <div className="mb-4 px-3 py-2.5 rounded-lg bg-red-900/30 text-red-400 text-sm">{error}</div>}
+        {error && <div className="mb-4 px-3 py-2.5 rounded-lg bg-red-900/30 text-red-400 text-sm">{error}</div>}
         {success && <div className="mb-4 px-3 py-2.5 rounded-lg bg-green-900/30 text-green-400 text-sm">{success}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -130,6 +145,7 @@ function LoginForm() {
             </div>
           </div>
 
+          {/* CHANGED TYPE TO SUBMIT TO FIRE ONSUBMIT */}
           <button
             type="submit"
             disabled={loading}
@@ -144,6 +160,7 @@ function LoginForm() {
           <p className="text-xs text-sp-muted">
             {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
             <button
+              type="button"
               onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); setSuccess('') }}
               className="text-sp-accent hover:underline"
             >
@@ -164,7 +181,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-sp-bg flex items-center justify-center p-4">
       <Suspense fallback={<div className="text-sp-muted text-sm">Loading...</div>}>
-        <LoginForm />
+        <LoginFormContent />
       </Suspense>
     </div>
   )

@@ -17,6 +17,7 @@ type TenantAdmin = {
     name: string
     plan: string
     whatsapp_number: string | null
+    created_at: string
   }
 }
 

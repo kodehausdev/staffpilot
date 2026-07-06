@@ -29,7 +29,8 @@ def handle(employee: dict, message: str, last_message: str | None = None) -> Non
     if not chunks:
         send_message(
             phone,
-            "That's not in the policy documents I have. Check with your HR admin for that one."
+            "That's not in the policy documents I have. Check with your HR admin for that one.",
+            tenant_id=tenant_id
         )
         update_session(employee["id"], context={"last_message": message})
         return
@@ -78,7 +79,7 @@ Reply:"""
 
     answer = generate(prompt, temperature=0.3)
     answer = _sanitize_response(answer)
-    send_message(phone, answer)
+    send_message(phone, answer, tenant_id=tenant_id)
     # Store this message as context for the next follow-up question
     update_session(employee["id"], context={"last_message": message})
 

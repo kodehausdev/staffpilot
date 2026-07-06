@@ -9,6 +9,7 @@ from services.session import clear_session
 
 def handle(employee: dict, message: str) -> None:
     phone = employee["phone"]
+    tenant_id = employee["tenant_id"]
     sb = get_supabase()
 
     # Check if message contains a specific month
@@ -30,10 +31,12 @@ def handle(employee: dict, message: str) -> None:
     if not result.data:
         if month:
             send_message(phone, f"Abeg, I no see any payslip for {month} on your account. "
-                                f"If you think something's off, reach your HR admin to sort it.")
+                                f"If you think something's off, reach your HR admin to sort it.",
+                                tenant_id=tenant_id)
         else:
             send_message(phone, "I no see any payslip on your account yet 😭 "
-                                "If salary should don enter, abeg ping HR admin — they'll check it fast.")
+                                "If salary should don enter, abeg ping HR admin — they'll check it fast.",
+                                tenant_id=tenant_id)
         clear_session(employee["id"])
         return
 
@@ -54,7 +57,7 @@ def handle(employee: dict, message: str) -> None:
     if slip.get("file_url"):
         response += f"\n\nDownload: {slip['file_url']}"
 
-    send_message(phone, response)
+    send_message(phone, response, tenant_id=tenant_id)
     clear_session(employee["id"])
 
 

@@ -7,11 +7,19 @@ const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 // Singleton browser client — shared across all client components
 let _client: ReturnType<typeof createBrowserClient> | null = null
+// Remove the singleton — create a fresh client each time
 export function createClient() {
-  if (!_client) _client = createBrowserClient(url, anon)
-  return _client
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        storageKey: 'cordhr-auth-token',
+        persistSession: true,
+      }
+    }
+  )
 }
-
 // Server client for Pages Router — pass req/res from getServerSideProps
 export function createServerSupabase(req: IncomingMessage & { cookies: Partial<{ [key: string]: string }> }, res: ServerResponse) {
   return createServerClient(url, anon, {

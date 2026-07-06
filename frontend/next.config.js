@@ -15,7 +15,16 @@ const getLocalIP = () => {
 };
 
 const nextConfig = {
-  allowedDevOrigins: [getLocalIP()],
-};
+  allowedDevOrigins: [
+    'localhost',
+    '127.0.0.1',
+    '40de-102-91-102-212.ngrok-free.app',  // no wildcard, no https://
+    '*.ngrok-free.app',                      // wildcard for any ngrok URL
+    '*.ngrok.io',
+  ],
+  turbopack: {
+    root: __dirname,
+  },
+}
 
-module.exports = nextConfig;
+module.exports = nextConfig

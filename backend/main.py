@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from routers.webhook import router as webhook_router
 from routers.admin import router as admin_router
 from routers.billing import router as billing_router
+from routers.settings import router as settings_router
 from config import get_settings
 
 app = FastAPI(
@@ -23,6 +24,7 @@ app.add_middleware(
 app.include_router(webhook_router)
 app.include_router(admin_router)
 app.include_router(billing_router)
+app.include_router(settings_router)
 
 
 @app.get("/health")
@@ -33,3 +35,5 @@ def health():
 @app.get("/")
 def root():
     return {"message": "StaffPilot API is running"}
+
+

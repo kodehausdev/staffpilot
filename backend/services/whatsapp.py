@@ -1,20 +1,47 @@
 """
 Meta WhatsApp Cloud API client.
 Replaces Twilio — no per-message fees, direct Meta integration.
+Supports both global and tenant-specific phone numbers.
 """
 import httpx
 import re
 from config import get_settings
+from db.supabase_client import get_supabase
 
 GRAPH_URL = "https://graph.facebook.com/v19.0"
 
 
-def send_message(to_phone: str, body: str) -> None:
+def _get_tenant_phone_id(tenant_id: str) -> str | None:
+    """Look up tenant's WhatsApp phone_number_id from database."""
+    sb = get_supabase()
+    result = (
+        sb.table("tenants")
+        .select("whatsapp_number")
+        .eq("id", tenant_id)
+        .limit(1)
+        .execute()
+    )
+    if result.data:
+        return result.data[0].get("whatsapp_number")
+    return None
+
+
+def send_message(to_phone: str, body: str, tenant_id: str | None = None) -> None:
     """
     Send a WhatsApp text message via Meta Cloud API.
+    
     to_phone: phone number WITH country code, e.g. +2348XXXXXXXXX
+    body: message text
+    tenant_id: optional tenant ID for tenant-specific phone number; defaults to global if not provided
     """
     s = get_settings()
+
+    # Determine which phone_number_id to use
+    phone_number_id = s.whatsapp_phone_number_id  # default: global
+    if tenant_id:
+        tenant_phone_id = _get_tenant_phone_id(tenant_id)
+        if tenant_phone_id:
+            phone_number_id = tenant_phone_id
 
     # Strip any non-digit chars except leading +
     phone = to_phone.replace(" ", "").replace("-", "")
@@ -23,7 +50,7 @@ def send_message(to_phone: str, body: str) -> None:
 
     with httpx.Client() as client:
         resp = client.post(
-            f"{GRAPH_URL}/{s.whatsapp_phone_number_id}/messages",
+            f"{GRAPH_URL}/{phone_number_id}/messages",
             headers={
                 "Authorization": f"Bearer {s.whatsapp_access_token}",
                 "Content-Type": "application/json",
@@ -41,14 +68,21 @@ def send_message(to_phone: str, body: str) -> None:
         print(f"[WhatsApp] Send failed: {resp.status_code} {resp.text}")
 
 
-def send_template(to_phone: str, template_name: str, lang: str = "en") -> None:
+def send_template(to_phone: str, template_name: str, lang: str = "en", tenant_id: str | None = None) -> None:
     """Send a template message (needed for first-contact or 24hr window)."""
     s = get_settings()
     phone = to_phone.replace("+", "").replace(" ", "")
 
+    # Determine which phone_number_id to use
+    phone_number_id = s.whatsapp_phone_number_id  # default: global
+    if tenant_id:
+        tenant_phone_id = _get_tenant_phone_id(tenant_id)
+        if tenant_phone_id:
+            phone_number_id = tenant_phone_id
+
     with httpx.Client() as client:
         client.post(
-            f"{GRAPH_URL}/{s.whatsapp_phone_number_id}/messages",
+            f"{GRAPH_URL}/{phone_number_id}/messages",
             headers={
                 "Authorization": f"Bearer {s.whatsapp_access_token}",
                 "Content-Type": "application/json",

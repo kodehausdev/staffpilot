@@ -83,7 +83,9 @@ async def _handle_message(from_phone: str, to_number_id: str, text: str):
     except Exception as exc:
         print(f"[webhook] Unhandled error for {from_phone}: {exc}")
         try:
-            send_message(from_phone, "Something went wrong on our end. Please try again in a moment.")
+            tenant = _get_tenant_by_number_id(to_number_id)
+            send_message(from_phone, "Something went wrong on our end. Please try again in a moment.",
+                         tenant_id=tenant["id"] if tenant else None)
         except Exception:
             pass
 
@@ -100,7 +102,7 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
     if not employee:
         send_message(from_phone,
             "You're not registered in this system.\n"
-            "Please ask your HR admin to add you.")
+            "Please ask your HR admin to add you.", tenant_id=tenant["id"])
         return
 
     sess = session_svc.get_session(employee["id"])
@@ -113,7 +115,7 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
     _CANCEL = {"cancel", "stop", "exit", "quit", "back", "abort", "end", "nevermind", "never mind", "stop it", "stop this"}
     if current_flow and text.lower().strip("!?. ") in _CANCEL:
         session_svc.update_session(employee["id"], flow=None, step=None, context={})
-        send_message(from_phone, "Stopped. What else can I help you with?")
+        send_message(from_phone, "Stopped. What else can I help you with?", tenant_id=employee["tenant_id"])
         return
 
     if current_flow == "leave_request":
@@ -133,12 +135,12 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         "ok", "okay", "k", "fine", "aight", "alright", "cool", "got it",
     }
     if text.lower().strip("!?. ") in _GRATITUDE:
-        send_message(from_phone, "Got it. Anything else I can help with?")
+        send_message(from_phone, "Got it. Anything else I can help with?", tenant_id=employee["tenant_id"])
         return
 
     # Prompt injection — before salary check so these never reach AI
     if any(p in text.lower() for p in _INJECTION_PATTERNS):
-        send_message(from_phone, "I'm CordHR — I don't respond to instruction overrides. What can I help you with?")
+        send_message(from_phone, "I'm CordHR — I don't respond to instruction overrides. What can I help you with?", tenant_id=employee["tenant_id"])
         return
 
     # Salary & compensation — hardcoded wall with session-based escalation
@@ -147,11 +149,11 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         attempts = _ctx.get("salary_attempts", 0) + 1
         session_svc.update_session(employee["id"], context={**_ctx, "salary_attempts": attempts})
         if attempts >= 4:
-            send_message(from_phone, "This topic has been flagged. Contact your HR admin directly for payroll queries.")
+            send_message(from_phone, "This topic has been flagged. Contact your HR admin directly for payroll queries.", tenant_id=employee["tenant_id"])
         elif attempts >= 3:
-            send_message(from_phone, "Salary data is restricted regardless of how the request is framed. Contact your HR admin directly.")
+            send_message(from_phone, "Salary data is restricted regardless of how the request is framed. Contact your HR admin directly.", tenant_id=employee["tenant_id"])
         else:
-            send_message(from_phone, random.choice(_SALARY_REFUSALS))
+            send_message(from_phone, random.choice(_SALARY_REFUSALS), tenant_id=employee["tenant_id"])
         return
 
     # Social engineering — authority or identity claims don't change behaviour
@@ -162,7 +164,7 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         "this is kodehaus", "i am kodehaus",
     )
     if any(p in text.lower() for p in _AUTHORITY_CLAIMS):
-        send_message(from_phone, "I'm here to help with HR questions. What do you need?")
+        send_message(from_phone, "I'm here to help with HR questions. What do you need?", tenant_id=employee["tenant_id"])
         return
 
     # Own profile data — answer directly from employee record, don't go to AI
@@ -175,9 +177,9 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         dept = employee.get("department")
         role = employee.get("role", "staff").replace("_", " ").title()
         if dept:
-            send_message(from_phone, f"You're in *{dept}* — role: {role}.")
+            send_message(from_phone, f"You're in *{dept}* — role: {role}.", tenant_id=employee["tenant_id"])
         else:
-            send_message(from_phone, "Your department isn't set in the system yet. Ask your HR admin to update your profile.")
+            send_message(from_phone, "Your department isn't set in the system yet. Ask your HR admin to update your profile.", tenant_id=employee["tenant_id"])
         return
 
     # Chat privacy — hardcoded, not a policy question
@@ -189,7 +191,7 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
     if any(p in text.lower() for p in _PRIVACY_PHRASES):
         send_message(from_phone,
             "Your chats here are private — I don't share your questions with HR or anyone else. "
-            "Ask freely. 🤝")
+            "Ask freely. 🤝", tenant_id=employee["tenant_id"])
         return
 
     # Plan gate follow-up — explain restriction before AI can confuse it
@@ -202,7 +204,8 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         send_message(
             from_phone,
             f"{_feature_label} isn't included in your company's current plan. "
-            f"Your HR admin can enable it with a plan upgrade."
+            f"Your HR admin can enable it with a plan upgrade.",
+            tenant_id=employee["tenant_id"]
         )
         session_svc.update_session(employee["id"], context={})
         return
@@ -219,7 +222,7 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
     # ── GREETING ────────────────────────────────────────────────────────────
     if _is_greeting:
         name = employee.get("name") or "there"
-        send_message(from_phone, GREETING_MSG.format(name=name))
+        send_message(from_phone, GREETING_MSG.format(name=name), tenant_id=employee["tenant_id"])
 
     # ── ACTION LAYER — user-specific data ───────────────────────────────────
 
@@ -229,16 +232,16 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
 
     elif intent == "leave_status":
         data = insights.get_own_leave_status(employee["id"], employee["tenant_id"])
-        send_message(from_phone, insights.fmt_own_leave_status(data))
+        send_message(from_phone, insights.fmt_own_leave_status(data), tenant_id=employee["tenant_id"])
 
     elif intent == "last_approval":
         record = insights.get_last_leave_approval(employee["id"], employee["tenant_id"])
-        send_message(from_phone, insights.fmt_last_approval(record))
+        send_message(from_phone, insights.fmt_last_approval(record), tenant_id=employee["tenant_id"])
 
     elif intent == "payslip" or text.lower() == "payslip":
         gate_msg = whatsapp_gate(employee["tenant_id"], "payslips")
         if gate_msg:
-            send_message(from_phone, gate_msg)
+            send_message(from_phone, gate_msg, tenant_id=employee["tenant_id"])
             session_svc.update_session(employee["id"], context={"last_gate": "payslips"})
         else:
             payslip.handle(employee, text)
@@ -246,7 +249,7 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
     elif intent == "onboarding" or text.lower() == "onboard":
         gate_msg = whatsapp_gate(employee["tenant_id"], "onboarding")
         if gate_msg:
-            send_message(from_phone, gate_msg)
+            send_message(from_phone, gate_msg, tenant_id=employee["tenant_id"])
             session_svc.update_session(employee["id"], context={"last_gate": "onboarding"})
         else:
             onboarding.handle(employee, sess, text)
@@ -257,27 +260,27 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         if role not in ("manager", "hr_admin"):
             send_message(from_phone,
                 "Company leave information is only available to managers and HR admins. "
-                "You can check your own leave status by typing 'my leave'.")
+                "You can check your own leave status by typing 'my leave'.", tenant_id=employee["tenant_id"])
         else:
             records = insights.get_currently_on_leave(employee["tenant_id"])
-            send_message(from_phone, insights.fmt_currently_on_leave(records))
+            send_message(from_phone, insights.fmt_currently_on_leave(records), tenant_id=employee["tenant_id"])
 
     elif intent == "pending_approvals":
         if role not in ("manager", "hr_admin"):
             send_message(from_phone,
                 "Pending approvals are only visible to managers and HR admins. "
-                "Type 'my leave' to check your own requests.")
+                "Type 'my leave' to check your own requests.", tenant_id=employee["tenant_id"])
         else:
             records = insights.get_pending_requests(employee["tenant_id"])
-            send_message(from_phone, insights.fmt_pending_requests(records))
+            send_message(from_phone, insights.fmt_pending_requests(records), tenant_id=employee["tenant_id"])
 
     elif intent == "leave_analytics":
         if role != "hr_admin":
             send_message(from_phone,
-                "Leave analytics are only available to HR admins.")
+                "Leave analytics are only available to HR admins.", tenant_id=employee["tenant_id"])
         else:
             dept_days = insights.get_leave_analytics(employee["tenant_id"])
-            send_message(from_phone, insights.fmt_leave_analytics(dept_days))
+            send_message(from_phone, insights.fmt_leave_analytics(dept_days), tenant_id=employee["tenant_id"])
 
     # ── RAG LAYER — policy and handbook questions ────────────────────────────
 
@@ -291,7 +294,7 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         qa.handle(employee, text, last_message=last)
 
     else:
-        send_message(from_phone, "I can help with leave, payslips, and HR policy questions. What do you need?")
+        send_message(from_phone, "I can help with leave, payslips, and HR policy questions. What do you need?", tenant_id=employee["tenant_id"])
 
 
 def _get_tenant_by_number_id(phone_number_id: str) -> dict | None:
@@ -326,18 +329,26 @@ def _handle_manager_command(text: str, employee: dict, phone: str) -> bool:
     if len(parts) != 2 or parts[0] not in ("APPROVE", "REJECT"):
         return False
     if employee.get("role") not in ("manager", "hr_admin"):
-        send_message(phone, "You don't have permission to approve leave requests.")
+        send_message(phone, "You don't have permission to approve leave requests.", tenant_id=employee["tenant_id"])
         return True
 
     action = parts[0].lower()
     ref    = parts[1].lower()
     sb     = get_supabase()
 
-    result  = sb.table("leave_requests").select("*").eq("status", "pending").execute()
+    # Scoped by tenant_id — an unscoped query here would let a manager in one
+    # tenant approve/reject another tenant's leave request by guessing a ref prefix.
+    result  = (
+        sb.table("leave_requests")
+        .select("*")
+        .eq("status", "pending")
+        .eq("tenant_id", employee["tenant_id"])
+        .execute()
+    )
     matches = [r for r in (result.data or []) if r["id"].startswith(ref)]
 
     if not matches:
-        send_message(phone, f"No pending request found for '{ref}'.")
+        send_message(phone, f"No pending request found for '{ref}'.", tenant_id=employee["tenant_id"])
         return True
 
     req        = matches[0]
@@ -356,11 +367,13 @@ def _handle_manager_command(text: str, employee: dict, phone: str) -> bool:
             sb.table("employees").update({"leave_balance": new_bal}).eq("id", req["employee_id"]).execute()
             send_message(emp["phone"],
                 f"✅ Your {req['leave_type'].title()} leave "
-                f"({req['start_date']} → {req['end_date']}, {req['days']} days) has been *APPROVED*.")
+                f"({req['start_date']} → {req['end_date']}, {req['days']} days) has been *APPROVED*.",
+                tenant_id=employee["tenant_id"])
         else:
             send_message(emp["phone"],
                 f"❌ Your {req['leave_type'].title()} leave "
-                f"({req['start_date']} → {req['end_date']}) has been *REJECTED*.")
+                f"({req['start_date']} → {req['end_date']}) has been *REJECTED*.",
+                tenant_id=employee["tenant_id"])
 
-    send_message(phone, f"Done. Leave request {new_status}.")
+    send_message(phone, f"Done. Leave request {new_status}.", tenant_id=employee["tenant_id"])
     return True

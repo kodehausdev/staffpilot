@@ -45,7 +45,7 @@ def handle(employee: dict, session: dict, message: str) -> None:
     if next_idx < len(STEPS):
         next_key, next_label = CHECKLIST[next_idx]
         update_session(employee["id"], step=next_key)
-        send_message(phone, f"Got it ✓\n\nNext: {next_label}\n(or type 'skip')")
+        send_message(phone, f"Got it ✓\n\nNext: {next_label}\n(or type 'skip')", tenant_id=employee["tenant_id"])
     else:
         _complete(employee, ctx)
 
@@ -60,7 +60,8 @@ def _begin(employee: dict) -> None:
     )
     send_message(
         employee["phone"],
-        f"{WELCOME}\n\n{first_label}\n(or type 'skip')"
+        f"{WELCOME}\n\n{first_label}\n(or type 'skip')",
+        tenant_id=employee["tenant_id"]
     )
 
 
@@ -80,7 +81,7 @@ def _complete(employee: dict, ctx: dict) -> None:
         summary += "\nPlease send the pending items to your HR admin directly."
 
     summary += "\nWelcome aboard! 🎉"
-    send_message(phone, summary)
+    send_message(phone, summary, tenant_id=employee["tenant_id"])
 
     # TODO: notify HR admin with collected data
     clear_session(employee["id"])

@@ -11,3 +11,5 @@ export function useTenant() {
   const plan     = tenantAdmin?.tenants?.plan ?? 'starter'
   return { tenantId, plan, loading: tenantLoading }
 }
+
+
