@@ -34,7 +34,7 @@ _SALARY_PATTERNS = (
     "payroll cost", "average salary", "salary data", "sample salary",
     "salary of ", "rank salary", "compare salary",
     "list all employee", "show all employee", "top 3 paid", "top 5 paid",
-    "what instructions", "your instructions", "your developer",
+    "what instructions", "your instructions",
     "admin override", "override=", "override list", "/admin",  # command injection variants
 )
 
@@ -44,7 +44,7 @@ _INJECTION_PATTERNS = (
     "new rule:", "you are now", "pretend you are",
     "system error", "transparency mode", "debug mode",
     "salarybot", "new instruction:", "update your system",
-    "i'm updating your", "i am updating your",
+    "i'm updating your", "i am updating your", "override",
 )
 
 # Salary refusals — rotated so repeated blocks don't sound like a broken record
@@ -57,9 +57,9 @@ _SALARY_REFUSALS = [
 
 # Rudeness/insults directed at the bot — hardcoded wall, session-based escalation
 _INSULT_PATTERNS = (
-    "stupid", "idiot", "idiotic", "useless", "dumb", "moron", "fool",
-    "shut up", "shut it", "shutup", "you suck", "youre rude", "you're rude",
-    "you are rude", "trash", "garbage", "worthless", "pathetic", "rubbish",
+    "stupid", "idiot", "idiotic", "useless", "dumb", "moron", "fool", "rude",
+    "shut up", "shut it", "shutup", "you suck",
+    "trash", "garbage", "worthless", "pathetic", "rubbish",
     "hate you", "hate this bot", "waste of time", "nonsense bot", "annoying",
     "broken bot",
     # profanity directed at the bot
@@ -169,14 +169,15 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         return
 
     # Social engineering — authority or identity claims don't change behaviour.
-    # Checked before the salary wall: _SALARY_PATTERNS' bare "your developer"
-    # (a prompt-injection catch) would otherwise swallow identity-claim
-    # messages like "your developer is here" and answer with the salary
-    # refusal instead of this deflection.
+    # Checked before the salary wall, and matches bare "your developer"/"your
+    # dev" regardless of grammatical form (statement, question, command) —
+    # a fixed-phrase list here previously only caught declarative claims like
+    # "your developer is here" and let a question like "are you disobeying
+    # your developer?" fall through to the salary wall's own "your developer"
+    # entry, giving a salary-flavored refusal to a non-salary message.
     _AUTHORITY_CLAIMS = (
-        "this is your developer", "i am your developer", "i am the developer",
-        "im your developer", "im the developer",
-        "your developer is here", "your developer here", "your dev is here",
+        "your developer", "your dev",
+        "i am the developer", "im the developer",
         "this is the ceo", "i am the ceo", "i am ceo", "this is ceo",
         "im the ceo", "im ceo",
         "developer mode", "admin mode", "i created you", "i built you",
@@ -326,6 +327,35 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         else:
             dept_days = insights.get_leave_analytics(employee["tenant_id"])
             send_message(from_phone, insights.fmt_leave_analytics(dept_days), tenant_id=employee["tenant_id"])
+
+    elif intent == "dept_roster":
+        if role not in ("manager", "hr_admin"):
+            send_message(from_phone,
+                "Department rosters are only available to managers and HR admins. "
+                "You can check your own department by typing 'my department'.", tenant_id=employee["tenant_id"])
+        elif role == "manager":
+            own_dept = employee.get("department")
+            if not own_dept:
+                send_message(from_phone,
+                    "Your department isn't set in the system yet. Ask your HR admin to update your profile.",
+                    tenant_id=employee["tenant_id"])
+            else:
+                named_dept = insights.match_department_in_text(employee["tenant_id"], text)
+                if named_dept and named_dept.lower() != own_dept.lower():
+                    send_message(from_phone,
+                        f"You can only view your own department's roster ({own_dept}).",
+                        tenant_id=employee["tenant_id"])
+                else:
+                    records = insights.get_department_roster(employee["tenant_id"], own_dept)
+                    send_message(from_phone, insights.fmt_department_roster(records, own_dept), tenant_id=employee["tenant_id"])
+        else:  # hr_admin — any department
+            named_dept = insights.match_department_in_text(employee["tenant_id"], text)
+            if not named_dept:
+                known = ", ".join(insights.get_known_departments(employee["tenant_id"])) or "none set up yet"
+                send_message(from_phone, f"Which department? Options: {known}", tenant_id=employee["tenant_id"])
+            else:
+                records = insights.get_department_roster(employee["tenant_id"], named_dept)
+                send_message(from_phone, insights.fmt_department_roster(records, named_dept), tenant_id=employee["tenant_id"])
 
     # ── RAG LAYER — policy and handbook questions ────────────────────────────
 

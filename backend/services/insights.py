@@ -77,6 +77,44 @@ def get_own_leave_status(employee_id: str, tenant_id: str) -> dict:
     }
 
 
+def get_known_departments(tenant_id: str) -> list[str]:
+    """Distinct department values actually in use for this tenant."""
+    sb = get_supabase()
+    result = (
+        sb.table("employees")
+        .select("department")
+        .eq("tenant_id", tenant_id)
+        .eq("is_active", True)
+        .execute()
+    )
+    depts = {r["department"] for r in (result.data or []) if r.get("department")}
+    return sorted(depts)
+
+
+def match_department_in_text(tenant_id: str, text: str) -> str | None:
+    """Finds which of the tenant's real departments (if any) is named in text —
+    avoids needing free-text NLU for something with a small, known vocabulary."""
+    text_lower = text.lower()
+    for dept in get_known_departments(tenant_id):
+        if dept.lower() in text_lower:
+            return dept
+    return None
+
+
+def get_department_roster(tenant_id: str, department: str) -> list[dict]:
+    sb = get_supabase()
+    result = (
+        sb.table("employees")
+        .select("name, phone, role")
+        .eq("tenant_id", tenant_id)
+        .eq("is_active", True)
+        .ilike("department", department)
+        .order("name")
+        .execute()
+    )
+    return result.data or []
+
+
 def get_last_leave_approval(employee_id: str, tenant_id: str) -> dict | None:
     """Returns the most recent approved/rejected request with approver name."""
     sb = get_supabase()
@@ -150,6 +188,17 @@ def fmt_own_leave_status(data: dict) -> str:
             )
     else:
         lines.append("No leave requests on record yet.")
+    return "\n".join(lines)
+
+
+def fmt_department_roster(records: list[dict], department: str) -> str:
+    if not records:
+        return f"No active employees found in {department}."
+    lines = [f"*👥 {department} ({len(records)}):*"]
+    for r in records:
+        name = r.get("name") or r["phone"]
+        role = (r.get("role") or "staff").replace("_", " ").title()
+        lines.append(f"• {name} — {role}")
     return "\n".join(lines)
 
 

@@ -80,6 +80,13 @@ leave_analytics
   Examples: "which department takes the most leave", "leave trends", "leave stats this year",
             "department with highest leave", "leave report"
 
+dept_roster
+  Asking for the list of employees IN a specific department — a roster/headcount
+  request, not the asker's own profile.
+  Examples: "who is in the IT department", "list of employees in sales",
+            "show me the marketing team", "IT dept employee list", "who's on the ops team"
+  NOT: "what's my department?" → that is unknown (own profile data, handled separately)
+
 hr_qa
   Questions about company POLICY, rules, benefits, entitlements, or workplace procedures —
   including HMO, pension, notice period, allowances, disciplinary rules, perks, resignation,
@@ -108,6 +115,7 @@ KEY DISTINCTIONS
 - "Show pending requests"      → pending_approvals
 - "Who approved my leave?"     → last_approval
 - "Who earns the most?"        → unknown  (gossip)
+- "Who is in the IT dept?"     → dept_roster  (headcount, not gossip)
 
 Reply with ONLY the intent label, nothing else.
 
@@ -122,7 +130,7 @@ Message: "{message}"
     valid = {
         "leave_request", "leave_status", "last_approval",
         "payslip", "onboarding", "hr_qa", "greeting",
-        "who_on_leave", "pending_approvals", "leave_analytics",
+        "who_on_leave", "pending_approvals", "leave_analytics", "dept_roster",
         "unknown",
     }
     return intent if intent in valid else "unknown"
