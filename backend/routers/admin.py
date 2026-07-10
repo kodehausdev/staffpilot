@@ -84,6 +84,12 @@ def decide_leave(request_id: str, body: LeaveDecision):
     if req["status"] != "pending":
         raise HTTPException(status_code=409, detail=f"Request is already {req['status']}")
 
+    # Only bites when reviewer identity is actually known (the dashboard
+    # doesn't send reviewer_id today — tenant_admins aren't employees) but
+    # guards the endpoint itself against self-approval whenever it is.
+    if body.reviewer_id and body.reviewer_id == req["employee_id"]:
+        raise HTTPException(status_code=403, detail="Cannot approve or reject your own leave request.")
+
     # Update status
     update_payload = {
         "status": body.status,

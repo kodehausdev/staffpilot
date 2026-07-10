@@ -386,7 +386,12 @@ def _handle_manager_command(text: str, employee: dict, phone: str) -> bool:
         send_message(phone, f"No pending request found for '{ref}'.", tenant_id=employee["tenant_id"])
         return True
 
-    req        = matches[0]
+    req = matches[0]
+
+    if req["employee_id"] == employee["id"]:
+        send_message(phone, "You can't approve or reject your own leave request. Ask another manager or your HR admin.", tenant_id=employee["tenant_id"])
+        return True
+
     new_status = "approved" if action == "approve" else "rejected"
     sb.table("leave_requests").update({
         "status":      new_status,
