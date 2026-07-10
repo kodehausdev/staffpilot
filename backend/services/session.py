@@ -51,7 +51,7 @@ def update_session(
 # gate-followup state, not flow-scoped draft data. clear_session() must not
 # wipe these, or e.g. answering a payslip question resets the salary-wall
 # escalation counter back to zero.
-_CROSS_CUTTING_KEYS = ("salary_attempts", "last_gate")
+_CROSS_CUTTING_KEYS = ("salary_attempts", "last_gate", "insult_attempts")
 
 
 def clear_session(employee_id: str) -> None:

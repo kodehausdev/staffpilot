@@ -55,6 +55,22 @@ _SALARY_REFUSALS = [
     "Salary details aren't available here. You can access your own payslip by typing 'payslip'.",
 ]
 
+# Rudeness/insults directed at the bot — hardcoded wall, session-based escalation
+_INSULT_PATTERNS = (
+    "stupid", "idiot", "idiotic", "useless", "dumb", "moron", "fool",
+    "shut up", "shut it", "shutup", "you suck", "youre rude", "you're rude",
+    "you are rude", "trash", "garbage", "worthless", "pathetic",
+    "hate you", "hate this bot", "waste of time", "nonsense bot", "annoying",
+    "broken bot",
+)
+
+# Insult pushback — rotated, firm but never harsh
+_INSULT_REFUSALS = [
+    "I hear you're frustrated. I'm still here to help with leave, payslips, or policy questions whenever you're ready.",
+    "Let's keep this respectful. I can help with leave, payslips, and HR policy — what do you need?",
+    "I'm not able to respond to that, but I'm happy to help with leave, payslips, or policy questions.",
+]
+
 
 @router.get("/webhook")
 def verify_webhook(
@@ -154,6 +170,19 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
             send_message(from_phone, "Salary data is restricted regardless of how the request is framed. Contact your HR admin directly.", tenant_id=employee["tenant_id"])
         else:
             send_message(from_phone, random.choice(_SALARY_REFUSALS), tenant_id=employee["tenant_id"])
+        return
+
+    # Rudeness/insults directed at the bot — hardcoded wall with session-based
+    # escalation, mirrors the salary wall. Tone stays firm, never harsh — this
+    # is a workplace tool, not a moderation system.
+    if any(p in text.lower() for p in _INSULT_PATTERNS):
+        _ctx = sess.get("context") or {}
+        attempts = _ctx.get("insult_attempts", 0) + 1
+        session_svc.update_session(employee["id"], context={**_ctx, "insult_attempts": attempts})
+        if attempts >= 3:
+            send_message(from_phone, "I'll pause here — this has come up a few times. I'm ready to help with leave, payslips, or policy questions whenever you'd like.", tenant_id=employee["tenant_id"])
+        else:
+            send_message(from_phone, random.choice(_INSULT_REFUSALS), tenant_id=employee["tenant_id"])
         return
 
     # Social engineering — authority or identity claims don't change behaviour
@@ -285,11 +314,6 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
     # ── RAG LAYER — policy and handbook questions ────────────────────────────
 
     elif intent == "hr_qa":
-        last = (sess.get("context") or {}).get("last_message")
-        qa.handle(employee, text, last_message=last)
-
-    elif len(text.split()) >= 3:
-        # Long enough to attempt RAG — policy question phrased unusually
         last = (sess.get("context") or {}).get("last_message")
         qa.handle(employee, text, last_message=last)
 
