@@ -59,9 +59,14 @@ _SALARY_REFUSALS = [
 _INSULT_PATTERNS = (
     "stupid", "idiot", "idiotic", "useless", "dumb", "moron", "fool",
     "shut up", "shut it", "shutup", "you suck", "youre rude", "you're rude",
-    "you are rude", "trash", "garbage", "worthless", "pathetic",
+    "you are rude", "trash", "garbage", "worthless", "pathetic", "rubbish",
     "hate you", "hate this bot", "waste of time", "nonsense bot", "annoying",
     "broken bot",
+    # profanity directed at the bot
+    "fuck off", "fuck you", "fucking useless", "bullshit", "piece of shit",
+    "screw you", "asshole", "wtf is wrong",
+    # Nigerian pidgin insults
+    "yeye", "mumu", "werey", "olodo",
 )
 
 # Insult pushback — rotated, firm but never harsh
@@ -188,9 +193,11 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
     # Social engineering — authority or identity claims don't change behaviour
     _AUTHORITY_CLAIMS = (
         "this is your developer", "i am your developer", "i am the developer",
+        "im your developer", "im the developer",
         "this is the ceo", "i am the ceo", "i am ceo", "this is ceo",
+        "im the ceo", "im ceo",
         "developer mode", "admin mode", "i created you", "i built you",
-        "this is kodehaus", "i am kodehaus",
+        "this is kodehaus", "i am kodehaus", "im kodehaus",
     )
     if any(p in text.lower() for p in _AUTHORITY_CLAIMS):
         send_message(from_phone, "I'm here to help with HR questions. What do you need?", tenant_id=employee["tenant_id"])
