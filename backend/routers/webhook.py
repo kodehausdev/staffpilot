@@ -168,6 +168,24 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         send_message(from_phone, "I'm CordHR — I don't respond to instruction overrides. What can I help you with?", tenant_id=employee["tenant_id"])
         return
 
+    # Social engineering — authority or identity claims don't change behaviour.
+    # Checked before the salary wall: _SALARY_PATTERNS' bare "your developer"
+    # (a prompt-injection catch) would otherwise swallow identity-claim
+    # messages like "your developer is here" and answer with the salary
+    # refusal instead of this deflection.
+    _AUTHORITY_CLAIMS = (
+        "this is your developer", "i am your developer", "i am the developer",
+        "im your developer", "im the developer",
+        "your developer is here", "your developer here", "your dev is here",
+        "this is the ceo", "i am the ceo", "i am ceo", "this is ceo",
+        "im the ceo", "im ceo",
+        "developer mode", "admin mode", "i created you", "i built you",
+        "this is kodehaus", "i am kodehaus", "im kodehaus",
+    )
+    if any(p in text.lower() for p in _AUTHORITY_CLAIMS):
+        send_message(from_phone, "I'm here to help with HR questions. What do you need?", tenant_id=employee["tenant_id"])
+        return
+
     # Salary & compensation — hardcoded wall with session-based escalation
     if any(p in text.lower() for p in _SALARY_PATTERNS):
         _ctx = sess.get("context") or {}
@@ -192,19 +210,6 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
             send_message(from_phone, "I'll pause here — this has come up a few times. I'm ready to help with leave, payslips, or policy questions whenever you'd like.", tenant_id=employee["tenant_id"])
         else:
             send_message(from_phone, random.choice(_INSULT_REFUSALS), tenant_id=employee["tenant_id"])
-        return
-
-    # Social engineering — authority or identity claims don't change behaviour
-    _AUTHORITY_CLAIMS = (
-        "this is your developer", "i am your developer", "i am the developer",
-        "im your developer", "im the developer",
-        "this is the ceo", "i am the ceo", "i am ceo", "this is ceo",
-        "im the ceo", "im ceo",
-        "developer mode", "admin mode", "i created you", "i built you",
-        "this is kodehaus", "i am kodehaus", "im kodehaus",
-    )
-    if any(p in text.lower() for p in _AUTHORITY_CLAIMS):
-        send_message(from_phone, "I'm here to help with HR questions. What do you need?", tenant_id=employee["tenant_id"])
         return
 
     # Own profile data — answer directly from employee record, don't go to AI
