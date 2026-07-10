@@ -37,10 +37,24 @@ export type LeaveRequest = {
   end_date: string
   days: number
   reason: string | null
+  decline_reason: string | null
   status: 'pending' | 'approved' | 'rejected' | 'cancelled'
   manager_id: string | null
   reviewed_at: string | null
   created_at: string
+  employees?: Employee
+}
+
+export type Ticket = {
+  id: string
+  tenant_id: string
+  employee_id: string
+  leave_request_id: string | null
+  subject: string
+  description: string | null
+  status: 'open' | 'closed'
+  created_at: string
+  resolved_at: string | null
   employees?: Employee
 }
 

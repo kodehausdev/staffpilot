@@ -9,7 +9,7 @@ import random
 from fastapi import APIRouter, Request, HTTPException, Query, BackgroundTasks
 from db.supabase_client import get_supabase
 from services import session as session_svc
-from services import leave, qa, payslip, onboarding, insights
+from services import leave, qa, payslip, onboarding, insights, tickets
 from services.gemini import classify_intent
 from services.whatsapp import send_message, parse_webhook
 from services.gating import whatsapp_gate
@@ -148,6 +148,10 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
 
     if current_flow == "onboarding":
         onboarding.handle(employee, sess, text)
+        return
+
+    if current_flow == "ticket_prompt":
+        tickets.handle(employee, sess, text)
         return
 
     _GRATITUDE = {

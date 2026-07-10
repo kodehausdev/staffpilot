@@ -18,6 +18,8 @@ export default function LeavePage() {
   const [filter, setFilter]     = useState<Filter>('all')
   const [loading, setLoading]   = useState(true)
   const [acting, setActing]     = useState<string | null>(null)
+  const [rejecting, setRejecting] = useState<string | null>(null)
+  const [reason, setReason]       = useState('')
 
   useEffect(() => {
     if (!tenantId) return
@@ -40,14 +42,21 @@ export default function LeavePage() {
     }
   }
 
-  async function updateStatus(id: string, status: 'approved' | 'rejected') {
+  async function updateStatus(id: string, status: 'approved' | 'rejected', declineReason?: string) {
     setActing(id)
-    await supabase
-      .from('leave_requests')
-      .update({ status, reviewed_at: new Date().toISOString() })
-      .eq('id', id)
-    setRequests(prev => prev.map(r => r.id === id ? { ...r, status } : r))
-    setActing(null)
+    try {
+      const res = await fetch('/api/leave/decide', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ id, status, reason: declineReason }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      setRequests(prev => prev.map(r => r.id === id ? { ...r, status, decline_reason: declineReason ?? null } : r))
+    } finally {
+      setActing(null)
+      setRejecting(null)
+      setReason('')
+    }
   }
 
   const visible = filter === 'all' ? requests : requests.filter(r => r.status === filter)
@@ -120,7 +129,36 @@ export default function LeavePage() {
                       <Badge className={STATUS_COLORS[lr.status] ?? ''}>{lr.status}</Badge>
                     </td>
                     <td className="px-4 py-3">
-                      {lr.status === 'pending' && (
+                      {lr.status === 'pending' && rejecting === lr.id ? (
+                        <div className="flex flex-col gap-1.5 min-w-[200px]">
+                          <textarea
+                            autoFocus
+                            value={reason}
+                            onChange={e => setReason(e.target.value)}
+                            placeholder="Reason (optional)"
+                            rows={2}
+                            className="text-xs px-2 py-1.5 rounded-md bg-sp-bg border border-sp-border text-sp-text placeholder:text-sp-muted resize-none focus:outline-none focus:ring-1 focus:ring-sp-accent"
+                          />
+                          <div className="flex gap-1.5">
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              disabled={acting === lr.id}
+                              onClick={() => updateStatus(lr.id, 'rejected', reason.trim() || undefined)}
+                            >
+                              Confirm reject
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={acting === lr.id}
+                              onClick={() => { setRejecting(null); setReason('') }}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : lr.status === 'pending' && (
                         <div className="flex gap-1.5">
                           <Button
                             size="sm"
@@ -134,7 +172,7 @@ export default function LeavePage() {
                             size="sm"
                             variant="danger"
                             disabled={acting === lr.id}
-                            onClick={() => updateStatus(lr.id, 'rejected')}
+                            onClick={() => setRejecting(lr.id)}
                           >
                             Reject
                           </Button>

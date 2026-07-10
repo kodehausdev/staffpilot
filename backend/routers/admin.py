@@ -13,6 +13,7 @@ from config import get_settings
 from services.whatsapp import send_message
 from services.gemini import embed_document_chunk
 from services.gating import check_doc_limit, check_employee_limit
+from services import session as session_svc
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -63,7 +64,8 @@ def list_employees(tenant_id: str):
 
 class LeaveDecision(BaseModel):
     status: str   # approved | rejected
-    reviewer_id: str
+    reviewer_id: Optional[str] = None   # employees.id of a WhatsApp manager, if any — dashboard admins aren't employees, so this is usually omitted
+    reason: Optional[str] = None        # admin's stated reason for declining (optional)
 
 
 @router.patch("/leave/{request_id}", dependencies=[Depends(verify_admin)])
@@ -83,33 +85,68 @@ def decide_leave(request_id: str, body: LeaveDecision):
         raise HTTPException(status_code=409, detail=f"Request is already {req['status']}")
 
     # Update status
-    sb.table("leave_requests").update({
+    update_payload = {
         "status": body.status,
-        "manager_id": body.reviewer_id,
         "reviewed_at": "now()",
-    }).eq("id", request_id).execute()
+    }
+    if body.reviewer_id:
+        update_payload["manager_id"] = body.reviewer_id
+    if body.status == "rejected" and body.reason:
+        update_payload["decline_reason"] = body.reason
+
+    sb.table("leave_requests").update(update_payload).eq("id", request_id).execute()
+
+    emp = (
+        sb.table("employees")
+        .select("id,phone,name,leave_balance,tenant_id")
+        .eq("id", req["employee_id"])
+        .limit(1)
+        .execute()
+    ).data[0]
 
     # Deduct balance if approved
     if body.status == "approved":
-        emp = sb.table("employees").select("phone,name,leave_balance").eq("id", req["employee_id"]).limit(1).execute().data[0]
         new_balance = max(0, emp["leave_balance"] - req["days"])
         sb.table("employees").update({"leave_balance": new_balance}).eq("id", req["employee_id"]).execute()
-        _notify_employee(emp["phone"], req, "approved")
+        _notify_approved(emp, req)
     else:
-        emp = sb.table("employees").select("phone").eq("id", req["employee_id"]).limit(1).execute().data[0]
-        _notify_employee(emp["phone"], req, "rejected")
+        _notify_rejected(emp, req, body.reason)
 
     return {"ok": True, "status": body.status}
 
 
-def _notify_employee(phone: str, req: dict, status: str) -> None:
-    emoji = "✅" if status == "approved" else "❌"
+def _notify_approved(emp: dict, req: dict) -> None:
     send_message(
-        phone,
-        f"{emoji} Your {req['leave_type'].title()} leave request "
+        emp["phone"],
+        f"✅ Your {req['leave_type'].title()} leave request "
         f"({req['start_date']} → {req['end_date']}, {req['days']} days) "
-        f"has been {status.upper()}."
+        f"has been *APPROVED*.",
+        tenant_id=emp["tenant_id"],
     )
+
+
+def _notify_rejected(emp: dict, req: dict, reason: Optional[str]) -> None:
+    lines = [
+        f"❌ Your {req['leave_type'].title()} leave request "
+        f"({req['start_date']} → {req['end_date']}) has been *REJECTED*."
+    ]
+    if reason:
+        lines.append(f"Reason: {reason}")
+    lines.append("Want me to flag this for your HR admin to review? Reply yes or no.")
+    send_message(emp["phone"], "\n\n".join(lines), tenant_id=emp["tenant_id"])
+
+    # Merge into existing context rather than overwriting — update_session's
+    # context= replaces the whole dict, and clobbering it here would silently
+    # wipe cross-cutting guardrail counters (salary_attempts, insult_attempts,
+    # last_gate) the same way clear_session() used to before that was fixed.
+    sess = session_svc.get_session(emp["id"])
+    ctx = sess.get("context") or {}
+    ctx.update({
+        "pending_ticket_leave_id": req["id"],
+        "pending_ticket_reason":   reason,
+        "pending_ticket_subject":  f"Leave declined — {req['leave_type'].title()} ({req['start_date']} → {req['end_date']})",
+    })
+    session_svc.update_session(emp["id"], flow="ticket_prompt", step=None, context=ctx)
 
 
 # ─── Stats ────────────────────────────────────────────────────────────────────

@@ -29,19 +29,25 @@ def get_session(employee_id: str) -> dict:
     return new_session
 
 
+# Sentinel distinct from None — lets callers pass flow=None / step=None to
+# explicitly clear a field, instead of that being indistinguishable from
+# "argument omitted, leave it alone".
+_UNSET = object()
+
+
 def update_session(
     employee_id: str,
-    flow: Optional[str] = None,
-    step: Optional[str] = None,
-    context: Optional[dict] = None,
+    flow=_UNSET,
+    step=_UNSET,
+    context: Optional[dict] = _UNSET,
 ) -> None:
     sb = get_supabase()
     payload = {"updated_at": "now()"}
-    if flow is not None:
+    if flow is not _UNSET:
         payload["current_flow"] = flow
-    if step is not None:
+    if step is not _UNSET:
         payload["flow_step"] = step
-    if context is not None:
+    if context is not _UNSET:
         payload["context"] = context
     sb.table("sessions").update(payload).eq("employee_id", employee_id).execute()
 

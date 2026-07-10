@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Users, CalendarOff,
-  FileText, CreditCard, Settings,
+  FileText, CreditCard, Settings, Ticket,
   MessageSquare, LogOut, Loader2, ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -12,6 +12,7 @@ import { useAuth } from '@/lib/auth-context'
 const NAV = [
   { href: '/dashboard',           icon: LayoutDashboard, label: 'Overview'       },
   { href: '/dashboard/leave',     icon: CalendarOff,     label: 'Leave requests' },
+  { href: '/dashboard/tickets',   icon: Ticket,          label: 'Tickets'        },
   { href: '/dashboard/employees', icon: Users,           label: 'Employees'      },
   { href: '/dashboard/payslips',  icon: CreditCard,      label: 'Payslips'       },
   { href: '/dashboard/docs',      icon: FileText,        label: 'HR documents'   },

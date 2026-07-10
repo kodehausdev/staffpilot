@@ -29,6 +29,8 @@ export const STATUS_COLORS: Record<string, string> = {
   approved: 'bg-green-100 text-green-800',
   rejected: 'bg-red-100 text-red-800',
   cancelled:'bg-gray-100 text-gray-600',
+  open:     'bg-amber-100 text-amber-800',
+  closed:   'bg-green-100 text-green-800',
 }
 
 export const LEAVE_TYPE_COLORS: Record<string, string> = {
