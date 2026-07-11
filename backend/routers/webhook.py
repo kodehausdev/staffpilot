@@ -278,7 +278,9 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
 
     elif intent == "leave_status":
         data = insights.get_own_leave_status(employee["id"], employee["tenant_id"])
-        send_message(from_phone, insights.fmt_own_leave_status(data), tenant_id=employee["tenant_id"])
+        name = employee.get("name") or "there"
+        reply = insights.answer_leave_status(name, data, text)
+        send_message(from_phone, reply, tenant_id=employee["tenant_id"])
 
     elif intent == "last_approval":
         record = insights.get_last_leave_approval(employee["id"], employee["tenant_id"])

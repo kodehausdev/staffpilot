@@ -6,6 +6,8 @@ This answers "what is actually happening right now?"
 """
 from datetime import date
 from db.supabase_client import get_supabase
+from services.gemini import generate
+from services.qa import _sanitize_response
 
 
 def get_currently_on_leave(tenant_id: str) -> list[dict]:
@@ -172,25 +174,46 @@ def fmt_leave_analytics(dept_days: dict[str, int]) -> str:
     return "\n".join(lines)
 
 
-def fmt_own_leave_status(data: dict) -> str:
-    name    = data.get("name", "")
+def answer_leave_status(name: str, data: dict, question: str) -> str:
+    """Grounds a natural-language reply in the employee's real leave data —
+    a plain template here would answer every phrasing identically ("how many
+    days left" and "when did I use those 16" got the exact same fixed dump,
+    even though the second question's answer was sitting right there in the
+    recent-requests list). Single-fetch grounding is enough: the fetch
+    already covers balance/total/last 3 requests, no cross-turn memory needed."""
     balance = data.get("balance", 0)
     total   = data.get("total", 0)
     recent  = data.get("recent", [])
-    lines   = [f"Hi {name}! 👋 Here's your leave summary:"]
-    lines.append(f"*Balance:* {balance} of {total} day{'s' if total != 1 else ''} remaining\n")
-    if recent:
-        lines.append("*Recent requests:*")
-        status_icon = {"approved": "✅", "rejected": "❌", "pending": "⏳"}
-        for r in recent:
-            icon = status_icon.get(r["status"], "•")
-            lines.append(
-                f"{icon} {r['leave_type'].title()} ({r['start_date']} → {r['end_date']}, "
-                f"{r.get('days', '?')} days) — {r['status'].title()}"
-            )
-    else:
-        lines.append("No leave requests on record yet.")
-    return "\n".join(lines)
+    recent_lines = "\n".join(
+        f"- {r['leave_type'].title()}: {r['start_date']} to {r['end_date']} "
+        f"({r.get('days', '?')} days) — {r['status'].title()}"
+        for r in recent
+    ) or "- No leave requests on record yet."
+
+    prompt = f"""You are CordHR — an HR assistant for a Nigerian company, communicating via WhatsApp.
+
+{name}'s leave data (the ONLY source of truth — never invent a date, day count, or
+request that isn't listed here):
+- Balance: {balance} of {total} days remaining this year
+- Recent requests:
+{recent_lines}
+
+VOICE: Calm, modern, professional. Occasionally warm. Keep replies to 2-3 lines. Get to the point.
+
+HARD RULES:
+1. Answer using ONLY the data above. If the answer isn't in it, say so plainly and
+   suggest checking with HR admin — never guess.
+2. Answer the actual question asked. Don't just repeat the whole balance summary
+   if they asked something more specific (e.g. "when did I use those days" wants
+   the dates, not the balance again).
+3. You are CordHR. Never refer to yourself as StaffPilot or any other name.
+
+{name}'s question: {question}
+
+Reply:"""
+
+    answer = generate(prompt, temperature=0.2)
+    return _sanitize_response(answer)
 
 
 def fmt_department_roster(records: list[dict], department: str) -> str:
