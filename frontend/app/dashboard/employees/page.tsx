@@ -69,6 +69,7 @@ export default function EmployeesPage() {
       role:          form.role,
       department:    form.department || null,
       leave_balance: form.leave_balance,
+      leave_days_total: form.leave_balance,
       is_active:     true,
     })
 

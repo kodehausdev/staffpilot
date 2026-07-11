@@ -27,7 +27,8 @@ create table employees (
   email           text,
   role            text default 'staff' check (role in ('staff','manager','hr_admin')),
   department      text,
-  leave_balance   int default 20,         -- annual leave days
+  leave_balance   int default 20,         -- remaining annual leave days (decrements as leave is taken)
+  leave_days_total int default 20 not null, -- fixed annual entitlement, distinct from leave_balance
   is_active       boolean default true,
   created_at      timestamptz default now(),
   unique(tenant_id, phone)

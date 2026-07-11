@@ -59,7 +59,7 @@ def get_leave_analytics(tenant_id: str) -> dict[str, int]:
 def get_own_leave_status(employee_id: str, tenant_id: str) -> dict:
     """Employee's leave balance + 3 most recent requests."""
     sb = get_supabase()
-    emp_res = sb.table("employees").select("name, leave_balance").eq("id", employee_id).limit(1).execute()
+    emp_res = sb.table("employees").select("name, leave_balance, leave_days_total").eq("id", employee_id).limit(1).execute()
     recent_res = (
         sb.table("leave_requests")
         .select("leave_type, start_date, end_date, days, status")
@@ -73,6 +73,7 @@ def get_own_leave_status(employee_id: str, tenant_id: str) -> dict:
     return {
         "name":    emp.get("name", ""),
         "balance": emp.get("leave_balance", 0),
+        "total":   emp.get("leave_days_total", 20),
         "recent":  recent_res.data or [],
     }
 
@@ -174,9 +175,10 @@ def fmt_leave_analytics(dept_days: dict[str, int]) -> str:
 def fmt_own_leave_status(data: dict) -> str:
     name    = data.get("name", "")
     balance = data.get("balance", 0)
+    total   = data.get("total", 0)
     recent  = data.get("recent", [])
     lines   = [f"Hi {name}! 👋 Here's your leave summary:"]
-    lines.append(f"*Balance:* {balance} day{'s' if balance != 1 else ''} remaining\n")
+    lines.append(f"*Balance:* {balance} of {total} day{'s' if total != 1 else ''} remaining\n")
     if recent:
         lines.append("*Recent requests:*")
         status_icon = {"approved": "✅", "rejected": "❌", "pending": "⏳"}

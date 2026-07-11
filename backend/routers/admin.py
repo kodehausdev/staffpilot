@@ -43,6 +43,10 @@ def create_employee(body: EmployeeCreate):
         **body.model_dump(),
         "phone": phone,
         "is_active": True,
+        # A brand-new employee hasn't taken any leave yet, so their total
+        # entitlement equals whatever starting balance was set (supports
+        # prorated new hires with a non-default leave_balance).
+        "leave_days_total": body.leave_balance,
     }).execute()
     return result.data[0]
 

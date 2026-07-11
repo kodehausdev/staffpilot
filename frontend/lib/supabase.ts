@@ -24,6 +24,7 @@ export type Employee = {
   role: 'staff' | 'manager' | 'hr_admin'
   department: string | null
   leave_balance: number
+  leave_days_total: number
   is_active: boolean
   created_at: string
 }
