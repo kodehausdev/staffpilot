@@ -5,7 +5,7 @@ import re
 from db.supabase_client import get_supabase
 from services.gemini import generate, embed_text
 from services.whatsapp import send_message
-from services.session import update_session
+from services.session import update_context
 
 # Covers all standard emoji blocks
 _EMOJI_RE = re.compile(
@@ -32,7 +32,7 @@ def handle(employee: dict, message: str, last_message: str | None = None) -> Non
             "That's not in the policy documents I have. Check with your HR admin for that one.",
             tenant_id=tenant_id
         )
-        update_session(employee["id"], context={"last_message": message})
+        update_context(employee["id"], "last_message", message)
         return
 
     context = "\n\n---\n\n".join([c["content"] for c in chunks])
@@ -81,7 +81,7 @@ Reply:"""
     answer = _sanitize_response(answer)
     send_message(phone, answer, tenant_id=tenant_id)
     # Store this message as context for the next follow-up question
-    update_session(employee["id"], context={"last_message": message})
+    update_context(employee["id"], "last_message", message)
 
 
 def _sanitize_response(text: str) -> str:

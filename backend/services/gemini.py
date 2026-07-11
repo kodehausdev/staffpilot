@@ -98,6 +98,18 @@ hr_qa
 greeting
   Hi, hello, good morning, start, menu.
 
+casual
+  Small talk, exclamations/reactions, or meta-commentary about the conversation
+  itself — not a real HR request, but not gibberish or off-topic either. Includes
+  self-reflective questions answerable from the employee's own role/department
+  (not requiring policy docs or other people's data).
+  Examples: "wow", "omo", "lol", "hey buds", "so I'm the boss?",
+            "you said that earlier", "ok, you were accurate today", "haha nice"
+  NOT: "what's my department?" / "what's my name?" → handled by a direct
+       hardcoded lookup, not this
+  NOT: gossip about other employees, salary fishing, gibberish/nonsense strings
+       → that is unknown
+
 unknown
   Off-topic, gossip about other people's salaries, gibberish, slang with no HR meaning.
 
@@ -110,11 +122,13 @@ KEY DISTINCTIONS
 - "Send my payslip"            → payslip  (delivery request)
 - "What's my leave balance?"   → leave_status  (own data)
 - "What's my department?"      → unknown  (handled separately, not onboarding)
-- "What's your name?"          → greeting  (not onboarding)
+- "What's my name?"            → unknown  (handled separately, not casual)
+- "What's your name?" (asking the bot's own name) → greeting
 - "Who is on leave today?"     → who_on_leave  (insight)
 - "Show pending requests"      → pending_approvals
 - "Who approved my leave?"     → last_approval
 - "Who earns the most?"        → unknown  (gossip)
+- "wow" / "omo" / "so I'm the boss?" → casual  (banter, not a real request)
 - "Who is in the IT dept?"     → dept_roster  (headcount, not gossip)
 
 Reply with ONLY the intent label, nothing else.
@@ -129,7 +143,7 @@ Message: "{message}"
     intent = response.text.strip().lower()
     valid = {
         "leave_request", "leave_status", "last_approval",
-        "payslip", "onboarding", "hr_qa", "greeting",
+        "payslip", "onboarding", "hr_qa", "greeting", "casual",
         "who_on_leave", "pending_approvals", "leave_analytics", "dept_roster",
         "unknown",
     }

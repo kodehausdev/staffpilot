@@ -9,7 +9,7 @@ import random
 from fastapi import APIRouter, Request, HTTPException, Query, BackgroundTasks
 from db.supabase_client import get_supabase
 from services import session as session_svc
-from services import leave, qa, payslip, onboarding, insights, tickets
+from services import leave, qa, payslip, onboarding, insights, tickets, chat
 from services.gemini import classify_intent
 from services.whatsapp import send_message, parse_webhook
 from services.gating import whatsapp_gate
@@ -228,6 +228,19 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
             send_message(from_phone, "Your department isn't set in the system yet. Ask your HR admin to update your profile.", tenant_id=employee["tenant_id"])
         return
 
+    # Own name — same category as department: answer directly, no AI needed
+    _NAME_PHRASES = (
+        "whats my name", "what's my name", "what is my name",
+        "who am i", "do you know my name", "you know my name",
+    )
+    if any(p in text.lower() for p in _NAME_PHRASES):
+        name = employee.get("name")
+        if name:
+            send_message(from_phone, f"You're *{name}*. 🙂", tenant_id=employee["tenant_id"])
+        else:
+            send_message(from_phone, "Your name isn't set in the system yet. Ask your HR admin to update your profile.", tenant_id=employee["tenant_id"])
+        return
+
     # Chat privacy — hardcoded, not a policy question
     _PRIVACY_PHRASES = (
         "is this chat", "this chat save", "will you report", "you go report",
@@ -364,6 +377,12 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
     elif intent == "hr_qa":
         last = (sess.get("context") or {}).get("last_message")
         qa.handle(employee, text, last_message=last)
+
+    # ── CHAT LAYER — banter, not a real request, no RAG/DB needed ───────────
+
+    elif intent == "casual":
+        last = (sess.get("context") or {}).get("last_message")
+        chat.handle(employee, text, last_message=last)
 
     else:
         send_message(from_phone, "I can help with leave, payslips, and HR policy questions. What do you need?", tenant_id=employee["tenant_id"])
