@@ -3,8 +3,13 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { createBrowserClient } from '@supabase/ssr'
 import type { User } from '@supabase/supabase-js'
 
-// Single instance — avoids creating a new client on every render
-const supabase = createBrowserClient(
+// Single instance — avoids creating a new client on every render.
+// Exported so other client components (see lib/supabase-server.ts's
+// createClient()) reuse this one instead of spinning up their own
+// GoTrueClient, which causes Web Locks contention between instances
+// (surfaces as "Lock ... was not released within 5000ms" and auth
+// state churn on every page navigation).
+export const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )

@@ -1,24 +1,17 @@
 import { createServerClient } from '@supabase/ssr'
-import { createBrowserClient } from '@supabase/ssr'
 import type { IncomingMessage, ServerResponse } from 'http'
+import { supabase as browserClient } from './auth-context'
 
 const url  = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-// Singleton browser client — shared across all client components
-let _client: ReturnType<typeof createBrowserClient> | null = null
-// Remove the singleton — create a fresh client each time
+// Reuse the one singleton browser client from auth-context.tsx. Creating a
+// second GoTrueClient here (as a prior version of this function did, on
+// every call) causes multiple auth clients to fight over the same Web
+// Locks mutex and storage — surfaces as "Lock ... was not released within
+// 5000ms" warnings and auth state churn on every page navigation.
 export function createClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: {
-        storageKey: 'cordhr-auth-token',
-        persistSession: true,
-      }
-    }
-  )
+  return browserClient
 }
 // Server client for Pages Router — pass req/res from getServerSideProps
 export function createServerSupabase(req: IncomingMessage & { cookies: Partial<{ [key: string]: string }> }, res: ServerResponse) {
