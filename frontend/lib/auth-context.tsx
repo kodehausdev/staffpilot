@@ -72,7 +72,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Keep track of the current active user ID to compare against token refreshes
   let currentUserId: string | null = null;
 
+  // Hard deadline — if onAuthStateChange's initial callback never fires
+  // (stale/corrupted session in storage, client init race, etc.), the
+  // spinner must not hang forever.
+  const deadline = setTimeout(() => {
+    setLoading(false);
+    setTenantLoading(false);
+  }, 6000);
+
   const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    clearTimeout(deadline);
     const currentUser = session?.user ?? null;
     setUser(currentUser);
 
@@ -87,11 +96,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setTenantAdmin(null);
       setTenantLoading(false);
     }
-    
+
     setLoading(false);
   });
 
   return () => {
+    clearTimeout(deadline);
     subscription.unsubscribe();
   };
 }, []);
