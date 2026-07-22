@@ -67,10 +67,9 @@ const PLANS = [
   {
     name: 'Starter',
     tagline: 'Stop answering the same HR questions every day.',
-    monthly: 35000,
-    annual: 350000,
-    staff: 10,
-    overage: 2000,
+    monthly: 50000,
+    annual: 500000,
+    staff: 30,
     features: [
       'WhatsApp HR bot',
       'Leave requests & tracking',
@@ -87,11 +86,10 @@ const PLANS = [
     tagline: 'Run HR like a system, not a struggle.',
     monthly: 150000,
     annual: 1500000,
-    staff: 50,
-    overage: 1500,
+    staff: 150,
     features: [
       'Everything in Starter',
-      'Up to 50 employees',
+      'Up to 150 employees',
       'Advanced multi-doc RAG',
       'Role-based access (Admin, HR, Manager)',
       'HR document management',
@@ -102,12 +100,11 @@ const PLANS = [
     cta: 'Start free',
   },
   {
-    name: 'Scale',
+    name: 'Enterprise',
     tagline: 'Turn HR into infrastructure.',
-    monthly: 400000,
-    annual: 4000000,
+    monthly: null,
+    annual: null,
     staff: null,
-    overage: null,
     features: [
       'Everything in Growth',
       'Unlimited employees',
@@ -312,7 +309,7 @@ export default function LandingPage() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 items-start">
-            {PLANS.map(({ name, tagline, monthly, annual: yr, staff, overage, features, popular, cta }) => (
+            {PLANS.map(({ name, tagline, monthly, annual: yr, staff, features, popular, cta }) => (
               <div
                 key={name}
                 className={`relative rounded-2xl border p-7 flex flex-col ${
@@ -333,13 +330,18 @@ export default function LandingPage() {
                 <p className="text-[11px] text-sp-muted mb-4 leading-snug">{tagline}</p>
 
                 <div className="mb-1">
-                  <span className="text-4xl font-black text-sp-text">
-                    {fmt(annual ? yr : monthly)}
-                  </span>
-                  <span className="text-sp-muted text-sm ml-1">
-                    /{annual ? 'yr' : 'mo'}
-                    {name === 'Scale' && '+'}
-                  </span>
+                  {monthly ? (
+                    <>
+                      <span className="text-4xl font-black text-sp-text">
+                        {fmt(annual ? (yr as number) : monthly)}
+                      </span>
+                      <span className="text-sp-muted text-sm ml-1">
+                        /{annual ? 'yr' : 'mo'}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-4xl font-black text-sp-text">Custom</span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-3 mb-6">
@@ -347,11 +349,6 @@ export default function LandingPage() {
                     <Users size={11} />
                     {staff ? `Up to ${staff} employees` : 'Unlimited employees'}
                   </p>
-                  {overage && (
-                    <p className="text-[10px] text-sp-muted bg-white/[0.04] border border-white/[0.06] px-2 py-0.5 rounded-full">
-                      +{fmt(overage)}/extra
-                    </p>
-                  )}
                 </div>
 
                 <ul className="space-y-2.5 mb-8 flex-1">
@@ -365,7 +362,7 @@ export default function LandingPage() {
 
                 {cta === 'Contact us' ? (
                   <a
-                    href="mailto:hi.kodehaus@gmail.com?subject=CordHR Scale"
+                    href="mailto:hi.kodehaus@gmail.com?subject=CordHR Enterprise"
                     className="w-full text-center py-2.5 rounded-xl border border-white/[0.06] text-sm text-sp-muted hover:text-sp-text hover:border-white/20 transition-colors font-medium"
                   >
                     Contact us
