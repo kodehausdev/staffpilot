@@ -13,7 +13,7 @@ function LoginFormContent() {
   // Safe client memoization to prevent rendering thread freeze
   const supabase = useMemo(() => createClient(), [])
 
-  const [mode, setMode]         = useState<'login' | 'signup'>('login')
+  const [mode, setMode]         = useState<'login' | 'signup' | 'forgot'>('login')
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [company, setCompany]   = useState('')
@@ -29,7 +29,17 @@ function LoginFormContent() {
     setLoading(true)
 
     try {
-      if (mode === 'login') {
+      if (mode === 'forgot') {
+        const { error: resetErr } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        })
+
+        if (resetErr) {
+          setError(resetErr.message)
+        } else {
+          setSuccess('If an account exists for that email, a reset link is on its way.')
+        }
+      } else if (mode === 'login') {
         const { data, error: loginErr } = await supabase.auth.signInWithPassword({ 
           email, 
           password 
@@ -87,10 +97,14 @@ function LoginFormContent() {
 
       <div className="bg-sp-surface border border-sp-border rounded-2xl p-7">
         <h1 className="text-lg font-semibold text-sp-text mb-1">
-          {mode === 'login' ? 'Welcome back' : 'Create your account'}
+          {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create your account' : 'Reset your password'}
         </h1>
         <p className="text-sm text-sp-muted mb-6">
-          {mode === 'login' ? 'Sign in to your HR dashboard' : 'Get your company set up in 2 minutes'}
+          {mode === 'login'
+            ? 'Sign in to your HR dashboard'
+            : mode === 'signup'
+            ? 'Get your company set up in 2 minutes'
+            : "Enter your email and we'll send you a reset link"}
         </p>
 
         {error && <div className="mb-4 px-3 py-2.5 rounded-lg bg-red-900/30 text-red-400 text-sm">{error}</div>}
@@ -123,27 +137,40 @@ function LoginFormContent() {
             />
           </div>
 
-          <div>
-            <label className="text-xs text-sp-muted mb-1 block">Password</label>
-            <div className="relative">
-              <input
-                type={showPw ? 'text' : 'password'}
-                required
-                minLength={8}
-                placeholder="Min. 8 characters"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                className="w-full bg-sp-bg border border-sp-border rounded-lg px-3.5 py-2.5 pr-10 text-sm text-sp-text placeholder-sp-muted focus:outline-none focus:border-sp-accent transition"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPw(!showPw)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-sp-muted hover:text-sp-text"
-              >
-                {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
-              </button>
+          {mode !== 'forgot' && (
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs text-sp-muted block">Password</label>
+                {mode === 'login' && (
+                  <button
+                    type="button"
+                    onClick={() => { setMode('forgot'); setError(''); setSuccess('') }}
+                    className="text-xs text-sp-accent hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <input
+                  type={showPw ? 'text' : 'password'}
+                  required
+                  minLength={8}
+                  placeholder="Min. 8 characters"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  className="w-full bg-sp-bg border border-sp-border rounded-lg px-3.5 py-2.5 pr-10 text-sm text-sp-text placeholder-sp-muted focus:outline-none focus:border-sp-accent transition"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(!showPw)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-sp-muted hover:text-sp-text"
+                >
+                  {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* CHANGED TYPE TO SUBMIT TO FIRE ONSUBMIT */}
           <button
@@ -152,21 +179,34 @@ function LoginFormContent() {
             className="w-full mt-1 py-2.5 rounded-lg bg-sp-accent text-white text-sm font-medium hover:bg-emerald-400 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading && <Loader2 size={14} className="animate-spin" />}
-            {mode === 'login' ? 'Sign in' : 'Create account'}
+            {mode === 'login' ? 'Sign in' : mode === 'signup' ? 'Create account' : 'Send reset link'}
           </button>
         </form>
 
         <div className="mt-5 pt-5 border-t border-sp-border text-center">
-          <p className="text-xs text-sp-muted">
-            {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-            <button
-              type="button"
-              onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); setSuccess('') }}
-              className="text-sp-accent hover:underline"
-            >
-              {mode === 'login' ? 'Sign up' : 'Sign in'}
-            </button>
-          </p>
+          {mode === 'forgot' ? (
+            <p className="text-xs text-sp-muted">
+              Remembered it?{' '}
+              <button
+                type="button"
+                onClick={() => { setMode('login'); setError(''); setSuccess('') }}
+                className="text-sp-accent hover:underline"
+              >
+                Sign in
+              </button>
+            </p>
+          ) : (
+            <p className="text-xs text-sp-muted">
+              {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+              <button
+                type="button"
+                onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); setSuccess('') }}
+                className="text-sp-accent hover:underline"
+              >
+                {mode === 'login' ? 'Sign up' : 'Sign in'}
+              </button>
+            </p>
+          )}
         </div>
       </div>
 
