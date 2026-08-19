@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase-server'
 import { useTenant } from '@/lib/use-tenant'
 import { Card, Badge, Button, PageHeader, Spinner, EmptyState } from '@/components/ui'
-import { formatDate, STATUS_COLORS, LEAVE_TYPE_COLORS } from '@/lib/utils'
+import { formatDate, STATUS_COLORS, LEAVE_TYPE_COLORS, withDeadline } from '@/lib/utils'
 import type { LeaveRequest } from '@/lib/supabase'
 
 type Filter = 'all' | 'pending' | 'approved' | 'rejected'
@@ -30,11 +30,11 @@ export default function LeavePage() {
     setLoading(true)
     try {
       console.log('[leave] tenantId:', tenantId)
-      const { data, error } = await supabase
+      const { data, error } = await withDeadline(supabase
         .from('leave_requests')
         .select('*, employees!employee_id(name, phone, department)')
         .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: false }))
       console.log('[leave] data:', data, 'error:', error)
       setRequests(data ?? [])
     } finally {

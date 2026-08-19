@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase-server'
 import { useTenant } from '@/lib/use-tenant'
 import { Card, Button, PageHeader, Spinner, EmptyState } from '@/components/ui'
-import { formatDate } from '@/lib/utils'
+import { formatDate, withDeadline } from '@/lib/utils'
 import { Upload, Trash2, FileText, AlertCircle } from 'lucide-react'
 import type { HrDocument } from '@/lib/supabase'
 
@@ -31,11 +31,11 @@ export default function DocsPage() {
   async function load() {
     setLoading(true)
     try {
-      const { data } = await supabase
+      const { data } = await withDeadline(supabase
         .from('hr_documents')
         .select('*')
         .eq('tenant_id', tenantId)
-        .order('uploaded_at', { ascending: false })
+        .order('uploaded_at', { ascending: false }))
       setDocs(data ?? [])
     } finally {
       setLoading(false)

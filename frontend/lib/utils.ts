@@ -43,3 +43,15 @@ export const LEAVE_TYPE_COLORS: Record<string, string> = {
 
 // Hardcoded demo tenant — replace with auth in production
 export const DEMO_TENANT_ID = process.env.NEXT_PUBLIC_DEMO_TENANT_ID || ''
+
+// Guards against a Supabase query hanging forever — e.g. a stale access token
+// stuck refreshing after a long-idle tab, or GoTrueClient lock contention
+// (see auth-context.tsx / supabase-server.ts). Without this, a page's
+// `loading` state (set to false in a `finally`) never resolves and the
+// spinner spins until the user clears site data. Aborts after `ms` so
+// callers' `finally`/`catch` always runs.
+export function withDeadline<T extends { abortSignal(signal: AbortSignal): any }>(query: T, ms = 8000) {
+  const ac = new AbortController()
+  const timer = setTimeout(() => ac.abort(), ms)
+  return Promise.resolve(query.abortSignal(ac.signal)).finally(() => clearTimeout(timer))
+}

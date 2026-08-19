@@ -6,6 +6,7 @@ import { useTenant } from '@/lib/use-tenant'
 import { useAuth } from '@/lib/auth-context'
 import { Button, Badge, PageHeader, Spinner } from '@/components/ui'
 import { Save, MessageSquare, CreditCard, CheckCircle2, AlertTriangle, Clock, ChevronDown } from 'lucide-react'
+import { withDeadline } from '@/lib/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -90,19 +91,20 @@ export default function SettingsPage() {
       if (!tenantLoading) setLoading(false)
       return
     }
-    supabase
+    withDeadline(supabase
       .from('tenants')
       .select('name, whatsapp_number')
       .eq('id', tenantId)
-      .single()
-      .then(({ data }: { data: { name: string | null; whatsapp_number: string | null } | null }) => {
-        if (data) {
-          setName(data.name ?? '')
-          setWaNumber(data.whatsapp_number ?? '')
-          setWaConnected(!!data.whatsapp_number)
+      .limit(1))
+      .then(({ data }: { data: { name: string | null; whatsapp_number: string | null }[] | null }) => {
+        const row = data?.[0]
+        if (row) {
+          setName(row.name ?? '')
+          setWaNumber(row.whatsapp_number ?? '')
+          setWaConnected(!!row.whatsapp_number)
         }
-        setLoading(false)
       })
+      .finally(() => setLoading(false))
         }, [tenantId, tenantLoading, supabase])
 
   // ── Meta JS SDK — runs once on mount only ─────────────────────────────────

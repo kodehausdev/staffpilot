@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase-server'
 import { useTenant } from '@/lib/use-tenant'
 import { useAuth } from '@/lib/auth-context'
 import { Badge, Spinner } from '@/components/ui'
-import { formatCurrency, STATUS_COLORS, LEAVE_TYPE_COLORS } from '@/lib/utils'
+import { formatCurrency, STATUS_COLORS, LEAVE_TYPE_COLORS, withDeadline } from '@/lib/utils'
 import type { Employee, LeaveRequest, Payslip } from '@/lib/supabase'
 import { ArrowRight, UserPlus, Upload, Plus, CreditCard, CalendarOff, ChevronDown } from 'lucide-react'
 
@@ -42,11 +42,11 @@ export default function DashboardPage() {
   async function load() {
     try {
       const [empRes, leaveRes, allLeaveRes, payslipRes, docsRes] = await Promise.all([
-        supabase.from('employees').select('id, department, is_active').eq('tenant_id', tenantId),
-        supabase.from('leave_requests').select('*, employees!employee_id(name, phone)').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(5),
-        supabase.from('leave_requests').select('status').eq('tenant_id', tenantId),
-        supabase.from('payslips').select('*, employees(name)').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(3),
-        supabase.from('hr_documents').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
+        withDeadline(supabase.from('employees').select('id, department, is_active').eq('tenant_id', tenantId)),
+        withDeadline(supabase.from('leave_requests').select('*, employees!employee_id(name, phone)').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(5)),
+        withDeadline(supabase.from('leave_requests').select('status').eq('tenant_id', tenantId)),
+        withDeadline(supabase.from('payslips').select('*, employees(name)').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(3)),
+        withDeadline(supabase.from('hr_documents').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId)),
       ])
 
       const emps     = (empRes.data ?? []) as Pick<Employee, 'id' | 'department' | 'is_active'>[]

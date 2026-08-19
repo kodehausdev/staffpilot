@@ -16,7 +16,7 @@ def generate(prompt: str, system: str = None, temperature: float = 0.3) -> str:
     """Generate a response from Gemini Flash."""
     client = _get_client()
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3.6-flash",
         contents=prompt,
         config=types.GenerateContentConfig(
             system_instruction=system or "You are a helpful HR assistant. Be concise and professional.",
@@ -136,7 +136,7 @@ Reply with ONLY the intent label, nothing else.
 Message: "{message}"
 """
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3.6-flash",
         contents=prompt,
         config=types.GenerateContentConfig(temperature=0.0),
     )

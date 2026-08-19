@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase-server'
 import { useTenant } from '@/lib/use-tenant'
 import { Card, Badge, Button, PageHeader, Spinner, EmptyState } from '@/components/ui'
-import { formatDate } from '@/lib/utils'
+import { formatDate, withDeadline } from '@/lib/utils'
 import { UserPlus, X } from 'lucide-react'
 import type { Employee } from '@/lib/supabase'
 
@@ -38,11 +38,11 @@ export default function EmployeesPage() {
   async function load() {
     setLoading(true)
     try {
-      const { data } = await supabase
+      const { data } = await withDeadline(supabase
         .from('employees')
         .select('*')
         .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: false }))
       setEmployees(data ?? [])
     } finally {
       setLoading(false)

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase-server'
 import { useTenant } from '@/lib/use-tenant'
 import { Card, Badge, Button, PageHeader, Spinner, EmptyState } from '@/components/ui'
-import { formatDate, STATUS_COLORS } from '@/lib/utils'
+import { formatDate, STATUS_COLORS, withDeadline } from '@/lib/utils'
 import type { Ticket } from '@/lib/supabase'
 
 type Filter = 'all' | 'open' | 'closed'
@@ -27,11 +27,11 @@ export default function TicketsPage() {
   async function load() {
     setLoading(true)
     try {
-      const { data } = await supabase
+      const { data } = await withDeadline(supabase
         .from('tickets')
         .select('*, employees!employee_id(name, phone, department)')
         .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: false }))
       setTickets(data ?? [])
     } finally {
       setLoading(false)

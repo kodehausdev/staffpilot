@@ -12,4 +12,4 @@ export function useTenant() {
   return { tenantId, plan, loading: tenantLoading }
 }
 
-
+2

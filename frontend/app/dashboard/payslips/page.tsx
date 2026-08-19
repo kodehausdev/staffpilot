@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase-server'
 import { useTenant } from '@/lib/use-tenant'
 import { Card, Button, PageHeader, Spinner, EmptyState } from '@/components/ui'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency, formatDate, withDeadline } from '@/lib/utils'
 import { Plus, X, ExternalLink, Upload, Download, AlertCircle, CheckCircle2, Send } from 'lucide-react'
 import type { Payslip, Employee } from '@/lib/supabase'
 
@@ -161,10 +161,10 @@ export default function PayslipsPage() {
     setLoading(true)
     try {
       const [psRes, empRes] = await Promise.all([
-        supabase.from('payslips').select('*, employees(name, phone)')
-          .eq('tenant_id', tenantId).order('created_at', { ascending: false }),
-        supabase.from('employees').select('id, name, phone')
-          .eq('tenant_id', tenantId).eq('is_active', true),
+        withDeadline(supabase.from('payslips').select('*, employees(name, phone)')
+          .eq('tenant_id', tenantId).order('created_at', { ascending: false })),
+        withDeadline(supabase.from('employees').select('id, name, phone')
+          .eq('tenant_id', tenantId).eq('is_active', true)),
       ])
       setPayslips(psRes.data ?? [])
       setEmployees(empRes.data ?? [])

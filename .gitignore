@@ -9,4 +9,5 @@ node_modules/
 frontend/certificates/
 *.pem
 CLAUDE.md
+META_APP_REVIEW.md
 *.tsbuildinfo
