@@ -178,6 +178,7 @@ KEY DISTINCTIONS
 - "what is the notice period for resignation?" → hr_qa  (policy)
 - "whos the founder of this company?" → unknown  (not HR-related)
  - "The company is planning a team-building event next month, what are the details?" → hr_qa  (policy/procedure)
+ - "what company do i work for?" → hr_qa  (policy/procedure)
 
 
 
