@@ -1,27 +1,36 @@
 """
-Llama 3.3 70B service — Meta's model, served via Together AI.
+Llama 3.3 70B service — Meta's model, served via OpenRouter's free tier.
 
-Groq deprecated and removed llama-3.3-70b-versatile in mid-2026, replacing it
-with non-Meta models (openai/gpt-oss-120b, qwen). Since the whole point here
-is running genuine Meta Llama for the Meta pitch, Together AI is used instead
-— it still serves meta-llama/Llama-3.3-70B-Instruct-Turbo directly.
+Two earlier providers didn't pan out:
+- Groq deprecated and fully removed llama-3.3-70b-versatile in mid-2026,
+  replacing it with non-Meta models (openai/gpt-oss-120b, qwen).
+- Together AI serves the real model but requires a funded account.
+
+OpenRouter serves meta-llama/llama-3.3-70b-instruct:free at zero cost, no
+card required — rate limited (~50 req/day on a free account), which is fine
+for the pitchathon demo but should be revisited before any real production
+load. Uses the OpenAI SDK pointed at OpenRouter's base URL, since OpenRouter
+is OpenAI-compatible.
 """
-from together import Together
+from openai import OpenAI
 from config import get_settings
 
-_client: Together | None = None
-MODEL = "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+_client: OpenAI | None = None
+MODEL = "meta-llama/llama-3.3-70b-instruct:free"
 
 
-def _get_client() -> Together:
+def _get_client() -> OpenAI:
     global _client
     if _client is None:
-        _client = Together(api_key=get_settings().together_api_key)
+        _client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=get_settings().openrouter_api_key,
+        )
     return _client
 
 
 def generate(prompt: str, system: str = None, temperature: float = 0.3) -> str:
-    """Generate a response from Meta's Llama 3.3 70B via Together AI."""
+    """Generate a response from Meta's Llama 3.3 70B via OpenRouter."""
     client = _get_client()
     response = client.chat.completions.create(
         model=MODEL,

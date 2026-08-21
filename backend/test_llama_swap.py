@@ -1,26 +1,30 @@
 #!/usr/bin/env python3
 """
-Quick standalone check that Together AI + genuine Meta Llama 3.3 70B is
-wired up correctly.
+Quick standalone check that OpenRouter's free Meta Llama 3.3 70B endpoint
+is wired up correctly.
 
 Usage:
-    pip install together
-    TOGETHER_API_KEY=... python3 test_llama_swap.py
+    pip install openai
+    OPENROUTER_API_KEY=sk-or-... python3 test_llama_swap.py
+
+Get a free key at https://openrouter.ai/keys — no card required.
+Free tier is rate limited (~50 requests/day on a fresh account), which is
+fine for this test and for tonight's demo, but keep that ceiling in mind.
 """
 import os
 import sys
 
-api_key = os.environ.get("TOGETHER_API_KEY")
+api_key = os.environ.get("OPENROUTER_API_KEY")
 if not api_key:
-    print("Set TOGETHER_API_KEY in your environment first.")
+    print("Set OPENROUTER_API_KEY in your environment first.")
     sys.exit(1)
 
-from together import Together
+from openai import OpenAI
 
-client = Together(api_key=api_key)
-MODEL = "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
+MODEL = "meta-llama/llama-3.3-70b-instruct:free"
 
-print(f"Testing {MODEL} via Together AI...\n")
+print(f"Testing {MODEL} via OpenRouter...\n")
 
 # 1) Basic generation
 resp = client.chat.completions.create(
@@ -35,7 +39,7 @@ print("generate() check:")
 print(" ", resp.choices[0].message.content.strip())
 print()
 
-# 2) Intent classification — mirrors services/llama.py classify_intent()
+# 2) Intent classification -- mirrors services/llama.py classify_intent()
 test_messages = [
     "I want to apply for annual leave next week",
     "what's my leave balance",

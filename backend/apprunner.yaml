@@ -28,11 +28,11 @@ run:
         secrets-manager:
           name: staffpilot/backend
           key: GEMINI_API_KEY
-    - name: TOGETHER_API_KEY
+    - name: OPENROUTER_API_KEY
       value-source:
         secrets-manager:
           name: staffpilot/backend
-          key: TOGETHER_API_KEY
+          key: OPENROUTER_API_KEY
     - name: WHATSAPP_ACCESS_TOKEN
       value-source:
         secrets-manager:
