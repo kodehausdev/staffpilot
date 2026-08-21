@@ -7,8 +7,11 @@ class Settings(BaseSettings):
     supabase_url: str
     supabase_service_role_key: str
 
-    # Gemini
+    # Gemini (embeddings only — see services/gemini.py)
     gemini_api_key: str
+
+    # Groq — hosts Llama 3.3 70B for chat + intent classification
+    groq_api_key: str
 
     # Meta WhatsApp Cloud API
     whatsapp_access_token: str

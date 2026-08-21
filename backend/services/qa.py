@@ -1,9 +1,10 @@
 """
-HR Q&A via RAG — embed question, find relevant chunks, ask Gemini.
+HR Q&A via RAG — embed question (Gemini), find relevant chunks, ask Llama.
 """
 import re
 from db.supabase_client import get_supabase
-from services.gemini import generate, embed_text
+from services.llama import generate
+from services.gemini import embed_text
 from services.whatsapp import send_message
 from services.session import update_context
 

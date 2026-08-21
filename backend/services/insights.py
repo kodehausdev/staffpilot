@@ -6,7 +6,7 @@ This answers "what is actually happening right now?"
 """
 from datetime import date
 from db.supabase_client import get_supabase
-from services.gemini import generate
+from services.llama import generate
 from services.qa import _sanitize_response
 
 

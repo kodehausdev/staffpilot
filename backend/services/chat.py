@@ -6,7 +6,7 @@ in hand. This exists so banter doesn't fall through to the flat capability
 list every time — that's what made the bot look "stuck" on anything that
 wasn't a recognized command.
 """
-from services.gemini import generate
+from services.llama import generate
 from services.whatsapp import send_message
 from services.session import update_context
 from services.qa import _sanitize_response

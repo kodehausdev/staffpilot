@@ -10,7 +10,7 @@ from fastapi import APIRouter, Request, HTTPException, Query, BackgroundTasks
 from db.supabase_client import get_supabase
 from services import session as session_svc
 from services import leave, qa, payslip, onboarding, insights, tickets, chat
-from services.gemini import classify_intent
+from services.llama import classify_intent
 from services.whatsapp import send_message, parse_webhook
 from services.gating import whatsapp_gate
 from config import get_settings
