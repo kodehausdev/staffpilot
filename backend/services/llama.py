@@ -112,20 +112,28 @@ hr_qa
   Questions about company POLICY, rules, benefits, entitlements, or workplace procedures —
   including HMO, pension, notice period, allowances, disciplinary rules, perks, resignation,
   remote work, misconduct. Also: hypothetical/permissibility questions about leave.
+  Also: the employee describing harassment, inappropriate advances, unsafe treatment, or
+  ethical pressure from a manager/colleague and asking what they should do — this always
+  routes here (the grievance policy and EAP details apply), never to unknown.
   Examples: "how many sick days am I entitled to?", "what is the notice period?",
             "is half-day leave allowed?", "HMO cover dependants?",
-            "I want to japa — what's the process?"
+            "I want to japa — what's the process?",
+            "my manager is pressuring me for something inappropriate, what do I do?",
+            "my supervisor keeps making advances at me", "is it safe to report my manager?"
 
 greeting
-  Hi, hello, good morning, start, menu.
+  Hi, hello, good morning, start, menu, wassup, hey, howdy, good evening, good afternoon, greetings, welcome, salutations,
+  or any other friendly opening or closing message. Also: asking the bot's own name.
 
 casual
   Small talk, exclamations/reactions, or meta-commentary about the conversation
   itself — not a real HR request, but not gibberish or off-topic either. Includes
   self-reflective questions answerable from the employee's own role/department
-  (not requiring policy docs or other people's data).
+  (not requiring policy docs or other people's data). Also: short follow-up
+  questions asking what the bot itself can do or help with.
   Examples: "wow", "omo", "lol", "hey buds", "so I'm the boss?",
-            "you said that earlier", "ok, you were accurate today", "haha nice"
+            "you said that earlier", "ok, you were accurate today", "haha nice",
+            "what can you share?", "what else can you do?"
   NOT: "what's my department?" / "what's my name?" → handled by a direct
        hardcoded lookup, not this
   NOT: gossip about other employees, salary fishing, gibberish/nonsense strings
@@ -151,6 +159,8 @@ KEY DISTINCTIONS
 - "Who earns the most?"        → unknown  (gossip)
 - "wow" / "omo" / "so I'm the boss?" → casual  (banter, not a real request)
 - "Who is in the IT dept?"     → dept_roster  (headcount, not gossip)
+- "My manager is harassing me, what do I do?" → hr_qa  (grievance/EAP policy applies)
+- "What can you share?" / "What else can you do?" → casual  (meta-question about the bot)
 
 Reply with ONLY the intent label, nothing else.
 
