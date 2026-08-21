@@ -1,19 +1,27 @@
-from groq import Groq
+"""
+Llama 3.3 70B service — Meta's model, served via Together AI.
+
+Groq deprecated and removed llama-3.3-70b-versatile in mid-2026, replacing it
+with non-Meta models (openai/gpt-oss-120b, qwen). Since the whole point here
+is running genuine Meta Llama for the Meta pitch, Together AI is used instead
+— it still serves meta-llama/Llama-3.3-70B-Instruct-Turbo directly.
+"""
+from together import Together
 from config import get_settings
 
-_client: Groq | None = None
-MODEL = "llama-3.3-70b-versatile"
+_client: Together | None = None
+MODEL = "meta-llama/Llama-3.3-70B-Instruct-Turbo"
 
 
-def _get_client() -> Groq:
+def _get_client() -> Together:
     global _client
     if _client is None:
-        _client = Groq(api_key=get_settings().groq_api_key)
+        _client = Together(api_key=get_settings().together_api_key)
     return _client
 
 
 def generate(prompt: str, system: str = None, temperature: float = 0.3) -> str:
-    """Generate a response from Llama 3.3 70B via Groq."""
+    """Generate a response from Meta's Llama 3.3 70B via Together AI."""
     client = _get_client()
     response = client.chat.completions.create(
         model=MODEL,
