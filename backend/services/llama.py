@@ -172,6 +172,10 @@ KEY DISTINCTIONS
 - "What are the benefits of the company's HMO?" → hr_qa  (policy, not a delivery request)
 - "What are the benefits of the company's HMO, and how do I access them?" → hr_qa  (policy, not a delivery request)
 - "Is it safe to report my manager for harassment?" → hr_qa  (grievance/EAP policy applies)
+- "What company policies apply to remote work?" → hr_qa  (policy, not a delivery request)
+- "What is the name of this bot?" → greeting  (asking the bot's own name)
+- "What is the name of this bot, and what can it do?" → casual  (meta-question about the bot)
+- "what is the notice period for resignation?" → hr_qa  (policy)
 
 
 
