@@ -89,12 +89,12 @@ onboarding
 
 who_on_leave
   Asking which employees are currently on leave / absent today.
-  Examples: "who is on leave", "who is not in office", "who is absent today", "who dey go leave"
+  Examples: "who is on leave", "who is not in office", "who is absent today", "who dey go leave", "who is out of office", " who is on vacation", "I fit see who is on leave today?", "who is on leave today", "who is on leave this week", "who is on leave this month"
 
 pending_approvals
   Asking to see pending / unactioned leave requests.
   Examples: "show pending requests", "any pending leave", "who hasn't been approved",
-            "pending approvals", "leave requests waiting"
+            "pending approvals", "leave requests waiting", "omo, show me pending leave requests", "who is waiting for approval"
 
 leave_analytics
   Asking for department-level or company-wide leave statistics / trends.
@@ -155,12 +155,25 @@ KEY DISTINCTIONS
 - "What's your name?" (asking the bot's own name) → greeting
 - "Who is on leave today?"     → who_on_leave  (insight)
 - "Show pending requests"      → pending_approvals
-- "Who approved my leave?"     → last_approval
-- "Who earns the most?"        → unknown  (gossip)
-- "wow" / "omo" / "so I'm the boss?" → casual  (banter, not a real request)
-- "Who is in the IT dept?"     → dept_roster  (headcount, not gossip)
+- "Who approved my leave?"     → last_approval (own data)
+- "Who earns the most?"        → unknown  (gossip) 
+- "wow" / "omo" / "so I'm the boss?" → casual  (banter, not a real request) 
+- "Who is in the IT dept?"     → dept_roster  (headcount, not gossip)- "How many sick days am I entitled to?" → hr_qa  (policy)
 - "My manager is harassing me, what do I do?" → hr_qa  (grievance/EAP policy applies)
-- "What can you share?" / "What else can you do?" → casual  (meta-question about the bot)
+- "What can you share?" / "What else can you do?" → casual  (meta-question about the bot) 
+- "I want to japa — what's the process?" → hr_qa  (policy, not a leave request)
+- "I want to take annual leave next week" → leave_request  (active submission)
+- "I want to take annual leave next week, but my manager is pressuring me to work" → hr_qa  (grievance/EAP policy applies)
+- "I want to take annual leave next week, but my manager is pressuring me to work, and I want to know if that's allowed" → hr_qa  (policy/permissibility)
+- "My supervisor keeps making advances at me, what should I do?" → hr_qa  (grievance/EAP policy applies)
+- "My supervisor keeps making advances at me, and I want to know if that's allowed" → hr_qa  (policy/permissibility)
+- "Should I report my manager for harassment?" → hr_qa  (grievance/EAP policy applies)
+- "Should I report my manager for harassment, and what is the process?" → hr_qa  (grievance/EAP policy applies)
+- "What are the benefits of the company's HMO?" → hr_qa  (policy, not a delivery request)
+- "What are the benefits of the company's HMO, and how do I access them?" → hr_qa  (policy, not a delivery request)
+- "Is it safe to report my manager for harassment?" → hr_qa  (grievance/EAP policy applies)
+
+
 
 Reply with ONLY the intent label, nothing else.
 
