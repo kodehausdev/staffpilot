@@ -177,8 +177,8 @@ KEY DISTINCTIONS
 - "What is the name of this bot, and what can it do?" → casual  (meta-question about the bot)
 - "what is the notice period for resignation?" → hr_qa  (policy)
 - "whos the founder of this company?" → unknown  (not HR-related)
- - "The company is planning a team-building event next month, what are the details?" → hr_qa  (policy/procedure)
- - "what company do i work for?" → hr_qa  (policy/procedure)
+- "The company is planning a team-building event next month, what are the details?" → hr_qa  (policy/procedure)
+- "what company do i work for?" → hr_qa  (policy/procedure)
 
 
 
