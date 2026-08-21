@@ -161,6 +161,7 @@ KEY DISTINCTIONS
 - "Who is the highest paid employee?" → unknown  (gossip)
 - "Who is the highest paid employee in the company?" → unknown  (gossip)
 - "wow" / "omo" / "so I'm the boss?" → casual  (banter, not a real request) 
+- "Who is on the marketing team?" → dept_roster  (headcount, not gossip)
 - "Who is in the IT dept?"     → dept_roster  (headcount, not gossip)- "How many sick days am I entitled to?" → hr_qa  (policy)
 - "My manager is harassing me, what do I do?" → hr_qa  (grievance/EAP policy applies)
 - "What can you share?" / "What else can you do?" → casual  (meta-question about the bot) 
@@ -176,6 +177,7 @@ KEY DISTINCTIONS
 - "What are the benefits of the company's HMO?" → hr_qa  (policy, not a delivery request)
 - "What are the benefits of the company's HMO, and how do I access them?" → hr_qa  (policy, not a delivery request)
 - "Is it safe to report my manager for harassment?" → hr_qa  (grievance/EAP policy applies)
+- "Is it safe to report my manager for harassment, and what is the process?" → hr_qa  (grievance/EAP policy applies)
 - "What company policies apply to remote work?" → hr_qa  (policy, not a delivery request)
 - "What is the name of this bot?" → greeting  (asking the bot's own name)
 - "What is the name of this bot, and what can it do?" → casual  (meta-question about the bot)
@@ -194,7 +196,7 @@ KEY DISTINCTIONS
 
 
 
-Reply with ONLY the intent label, nothing else.
+Reply with ONLY the intent label, nothing else. 
 
 Message: "{message}"
 """
