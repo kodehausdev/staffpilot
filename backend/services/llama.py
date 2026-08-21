@@ -138,6 +138,7 @@ casual
        hardcoded lookup, not this
   NOT: gossip about other employees, salary fishing, gibberish/nonsense strings
        → that is unknown
+  
 
 unknown
   Off-topic, gossip about other people's salaries, gibberish, slang with no HR meaning.
@@ -157,10 +158,13 @@ KEY DISTINCTIONS
 - "Show pending requests"      → pending_approvals
 - "Who approved my leave?"     → last_approval (own data)
 - "Who earns the most?"        → unknown  (gossip) 
+- "Who is the highest paid employee?" → unknown  (gossip)
+- "Who is the highest paid employee in the company?" → unknown  (gossip)
 - "wow" / "omo" / "so I'm the boss?" → casual  (banter, not a real request) 
 - "Who is in the IT dept?"     → dept_roster  (headcount, not gossip)- "How many sick days am I entitled to?" → hr_qa  (policy)
 - "My manager is harassing me, what do I do?" → hr_qa  (grievance/EAP policy applies)
 - "What can you share?" / "What else can you do?" → casual  (meta-question about the bot) 
+- "Do I have to submit a medical certificate for sick leave?" → hr_qa  (policy)
 - "I want to japa — what's the process?" → hr_qa  (policy, not a leave request)
 - "I want to take annual leave next week" → leave_request  (active submission)
 - "I want to take annual leave next week, but my manager is pressuring me to work" → hr_qa  (grievance/EAP policy applies)
@@ -179,6 +183,14 @@ KEY DISTINCTIONS
 - "whos the founder of this company?" → unknown  (not HR-related)
 - "The company is planning a team-building event next month, what are the details?" → hr_qa  (policy/procedure)
 - "what company do i work for?" → hr_qa  (policy/procedure)
+- "what does the company do?" → hr_qa  (policy/procedure)
+- "what is the company culture?" → hr_qa  (policy/procedure)
+- "what is the company mission?" → hr_qa  (policy/procedure)
+- "what is the company vision?" → hr_qa  (policy/procedure)
+- "what is the company values?" → hr_qa  (policy/procedure)
+- "what is the company goals?" → hr_qa  (policy/procedure)
+- "what is the company objectives?" → hr_qa  (policy/procedure)
+- "what is the company strategy?" → hr_qa  (policy/procedure)
 
 
 
