@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """
-Quick standalone check that OpenRouter's free Meta Llama 3.3 70B endpoint
+Quick standalone check that OpenRouter's paid Meta Llama 3.3 70B endpoint (requires a small top-up)
 is wired up correctly.
 
 Usage:
     pip install openai
     OPENROUTER_API_KEY=sk-or-... python3 test_llama_swap.py
 
-Get a free key at https://openrouter.ai/keys — no card required.
-Free tier is rate limited (~50 requests/day on a fresh account), which is
-fine for this test and for tonight's demo, but keep that ceiling in mind.
+Get a key at https://openrouter.ai/keys (no card needed to sign up), then
+add at least $5 in credits at https://openrouter.ai/credits — the free
+tier for this model was delisted in August 2026, so a small top-up is
+required now. Pay-as-you-go pricing means a night of testing plus a live
+demo will cost cents, not dollars.
 """
 import os
 import sys
@@ -22,7 +24,7 @@ if not api_key:
 from openai import OpenAI
 
 client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
-MODEL = "meta-llama/llama-3.3-70b-instruct:free"
+MODEL = "meta-llama/llama-3.3-70b-instruct"
 
 print(f"Testing {MODEL} via OpenRouter...\n")
 

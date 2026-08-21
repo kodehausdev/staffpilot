@@ -1,22 +1,26 @@
 """
-Llama 3.3 70B service — Meta's model, served via OpenRouter's free tier.
+Llama 3.3 70B service — Meta's model, served via OpenRouter.
 
-Two earlier providers didn't pan out:
+Three providers down before landing here:
 - Groq deprecated and fully removed llama-3.3-70b-versatile in mid-2026,
   replacing it with non-Meta models (openai/gpt-oss-120b, qwen).
 - Together AI serves the real model but requires a funded account.
+- OpenRouter's free tier (meta-llama/llama-3.3-70b-instruct:free) was
+  itself delisted in early August 2026 -- confirmed via a live 404 telling
+  us to use the paid slug instead.
 
-OpenRouter serves meta-llama/llama-3.3-70b-instruct:free at zero cost, no
-card required — rate limited (~50 req/day on a free account), which is fine
-for the pitchathon demo but should be revisited before any real production
-load. Uses the OpenAI SDK pointed at OpenRouter's base URL, since OpenRouter
-is OpenAI-compatible.
+Landed on OpenRouter's paid endpoint: meta-llama/llama-3.3-70b-instruct.
+Same model, pay-as-you-go pricing (roughly $0.10-$1/M tokens depending on
+which upstream provider OpenRouter routes to) -- a $5 top-up at
+openrouter.ai/credits comfortably covers a full night of testing plus a
+live demo. Uses the OpenAI SDK pointed at OpenRouter's base URL, since
+OpenRouter is OpenAI-compatible.
 """
 from openai import OpenAI
 from config import get_settings
 
 _client: OpenAI | None = None
-MODEL = "meta-llama/llama-3.3-70b-instruct:free"
+MODEL = "meta-llama/llama-3.3-70b-instruct"
 
 
 def _get_client() -> OpenAI:
