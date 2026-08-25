@@ -155,6 +155,23 @@ async def onboard_whatsapp(
             first_phone     = phones[0]
             phone_number_id = first_phone["id"]
 
+            print(f"[onboard] phone_number_id: {phone_number_id} ({first_phone.get('display_phone_number')})")
+
+            # ── Step 4: Subscribe your app to this tenant's WABA webhooks ────
+            # Without this, messages to the tenant's number won't reach /webhook.
+            sub_res  = client.post(
+                f"{GRAPH_BASE}/{waba_id}/subscribed_apps",
+                params={"access_token": obo_token},
+            )
+            sub_data = sub_res.json()
+
+            if sub_res.status_code != 200 or not sub_data.get("success"):
+                print(f"[onboard] WARNING: webhook subscription failed for WABA {waba_id}: {sub_data}")
+            else:
+                print(f"[onboard] Webhook subscribed for WABA {waba_id}")
+
+            
+
     except HTTPException:
         raise
     except Exception as e:
@@ -165,8 +182,10 @@ async def onboard_whatsapp(
     try:
         result = (
             sb.table("tenants")
-            .update({"whatsapp_number": phone_number_id})
-            .eq("id", tenant_id)
+            .update({
+            "whatsapp_number": phone_number_id,
+            "meta_waba_id":    waba_id,
+})            .eq("id", tenant_id)
             .execute()
         )
         if not result.data:

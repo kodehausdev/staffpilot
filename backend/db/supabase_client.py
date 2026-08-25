@@ -15,3 +15,4 @@ def get_supabase() -> Client:
 
 # Alias for clarity in admin contexts
 get_admin_supabase = get_supabase
+
