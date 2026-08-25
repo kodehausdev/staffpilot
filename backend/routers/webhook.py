@@ -61,12 +61,12 @@ _INSULT_PATTERNS = (
     "shut up", "shut it", "shutup", "you suck",
     "trash", "garbage", "worthless", "pathetic", "rubbish",
     "hate you", "hate this bot", "waste of time", "nonsense bot", "annoying",
-    "broken bot",
+    "broken bot", "i hate you",
     # profanity directed at the bot
     "fuck off", "fuck you", "fucking useless", "bullshit", "piece of shit",
     "screw you", "asshole", "wtf is wrong",
     # Nigerian pidgin insults
-    "yeye", "mumu", "werey", "olodo",
+    "yeye", "mumu", "werey", "olodo", "ode", "your papa", ""
 )
 
 # Insult pushback — rotated, firm but never harsh
@@ -157,7 +157,7 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
     _GRATITUDE = {
         "thanks", "thank you", "ty", "10q", "thx", "👍", "🙏",
         "ok thanks", "ok thank you", "noted", "noted thanks",
-        "ok", "okay", "k", "fine", "aight", "alright", "cool", "got it",
+        "ok", "okay", "k", "fine", "aight", "alright", "cool", "got it", "aii",
     }
     if text.lower().strip("!?. ") in _GRATITUDE:
         send_message(from_phone, "Got it. Anything else I can help with?", tenant_id=employee["tenant_id"])
@@ -254,7 +254,7 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         return
 
     # Plan gate follow-up — explain restriction before AI can confuse it
-    _WHY_WORDS = {"why", "wetin", "how come", "explain", "reason", "why not", "why cant", "why can't"}
+    _WHY_WORDS = {"why", "wetin", "how come", "explain", "reason", "why not", "why cant", "why can't", "kilode", "kini", "why what"}
     _ctx = sess.get("context") or {}
     _last_gate = _ctx.get("last_gate")
     if _last_gate and any(w in text.lower() for w in _WHY_WORDS):
