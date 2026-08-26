@@ -49,6 +49,8 @@ export default function SettingsPage() {
   const [loading, setLoading]         = useState(true)
   const [sdkReady, setSdkReady]       = useState(false)
   const [waConnected, setWaConnected] = useState(false)
+  const [pin, setPin]                 = useState('')
+  const [pinError, setPinError]       = useState('')
   const [subscribeWarning, setSubscribeWarning] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [fullName, setFullName]         = useState('')
@@ -152,6 +154,13 @@ export default function SettingsPage() {
 
   // ── Embedded signup trigger ────────────────────────────────────────────────
   function handleEmbeddedSignup() {
+    // Validate PIN before opening the Meta popup
+    setPinError('')
+    if (!pin || !/^\d{6}$/.test(pin)) {
+      setPinError('Please enter a 6-digit PIN before connecting.')
+      return
+    }
+
     if (!window.FB) {
       setError('Meta SDK is still loading — please wait a moment.')
       return
@@ -173,7 +182,7 @@ export default function SettingsPage() {
     window.FB.login(
       (response: any) => {
         if (response.authResponse?.code) {
-          exchangeCode(response.authResponse.code)
+          exchangeCode(response.authResponse.code, pin)
         } else if (response.status !== 'unknown') {
           setError('WhatsApp connection was cancelled. Try again.')
         }
@@ -188,7 +197,7 @@ export default function SettingsPage() {
   }
 
   // ── Exchange Meta code → phone_number_id via backend ──────────────────────
-  async function exchangeCode(code: string) {
+  async function exchangeCode(code: string, pin: string) {
     if (!tenantId) {
       setError('Session not ready — please refresh and try again.')
       return
@@ -199,7 +208,7 @@ export default function SettingsPage() {
       const res = await fetch('/api/whatsapp/connect', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ tenant_id: tenantId, code }),
+        body:    JSON.stringify({ tenant_id: tenantId, code, pin }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -343,19 +352,45 @@ export default function SettingsPage() {
             </button>
 
             {showAdvanced && (
-              <div className="mt-3">
+              <div className="mt-3 space-y-3">
+                {/* PIN input */}
+                <div>
+                  <label className="text-xs text-sp-muted mb-1 block font-medium">
+                    Set a 6-digit security PIN
+                  </label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="••••••"
+                    value={pin}
+                    onChange={e => {
+                      const v = e.target.value.replace(/\D/g, '').slice(0, 6)
+                      setPin(v)
+                      setPinError('')
+                    }}
+                    className="input w-full font-mono tracking-widest text-center text-lg"
+                  />
+                  {pinError && (
+                    <p className="text-[11px] text-red-400 mt-1">{pinError}</p>
+                  )}
+                  <p className="text-[11px] text-sp-muted mt-1">
+                    You'll need this PIN if you ever migrate your WhatsApp number. Keep it safe.
+                  </p>
+                </div>
+
                 <button
                   type="button"
                   onClick={handleEmbeddedSignup}
-                  disabled={saving || !sdkReady}
+                  disabled={saving || !sdkReady || pin.length !== 6}
                   className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#25D366] hover:bg-[#1ead58] active:bg-[#17a050] disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold text-xs py-3 px-4 transition-all"
                 >
                   <MessageSquare size={14} fill="currentColor" />
                   {saving ? 'Connecting…' : !sdkReady ? 'Loading…' : waConnected ? 'Reconnect via Meta' : 'Connect WhatsApp via Meta'}
                 </button>
-                <p className="text-[11px] text-sp-muted mt-2">
-                  Opens a Meta popup. Sign in and select your own WhatsApp Business account — this
-                  overrides the number we assign you.
+                <p className="text-[11px] text-sp-muted">
+                  Opens a Meta popup. Sign in and select your WhatsApp Business account — your number
+                  will be activated automatically.
                 </p>
               </div>
             )}
