@@ -139,8 +139,11 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
     if to_number_id == SHARED_NUMBER_ID:
         employee = _get_employee_cross_tenant(from_phone)
         if not employee:
-            # Complete stranger — serve them a product demo
-            send_message(from_phone, DEMO_MSG, tenant_id=None)
+            # Complete stranger — serve a product demo, but throttle to once
+            # per 24 hours so we don't spam them and stay on Meta's good side.
+            if _should_send_demo(from_phone):
+                _record_demo_sent(from_phone)
+                send_demo_cta(from_phone)
             return
         # Found — hand off to normal flow with their tenant
         tenant = {"id": employee["tenant_id"]}
@@ -419,6 +422,62 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
 
     else:
         send_message(from_phone, "I can help with leave, payslips, and HR policy questions. What do you need?", tenant_id=employee["tenant_id"])
+
+
+# ── Demo throttle helpers ────────────────────────────────────────────────────
+# Strangers who text the shared CordHR number get one demo message per 24hrs.
+# We track this in Supabase (demo_contacts table) to survive server restarts.
+
+def _should_send_demo(phone: str) -> bool:
+    """Return True if we haven't sent a demo to this phone in the last 24 hours."""
+    from datetime import datetime, timezone, timedelta
+    sb  = get_supabase()
+    res = (
+        sb.table("demo_contacts")
+        .select("last_demo_sent_at")
+        .eq("phone", phone)
+        .limit(1)
+        .execute()
+    )
+    if not res.data:
+        return True
+    last = res.data[0].get("last_demo_sent_at")
+    if not last:
+        return True
+    try:
+        last_dt = datetime.fromisoformat(last.replace("Z", "+00:00"))
+        return datetime.now(timezone.utc) - last_dt > timedelta(hours=24)
+    except Exception:
+        return True
+
+
+def _record_demo_sent(phone: str) -> None:
+    """Upsert the demo contact record with current timestamp."""
+    sb = get_supabase()
+    sb.table("demo_contacts").upsert(
+        {"phone": phone, "last_demo_sent_at": "now()", "message_count": 1},
+        on_conflict="phone",
+    ).execute()
+
+
+def send_demo_cta(to_phone: str) -> None:
+    """
+    Send the CordHR demo pitch as a WhatsApp template message with a
+    'Visit website' CTA button — reduces typing and looks professional.
+
+    Template name: cordhr_demo  (must be approved in Meta Business Manager)
+    Template body: Hi there! I'm CordHR — an AI HR assistant for businesses.
+                   Manage leave, payslips, and HR policy via WhatsApp.
+    Button:        Visit website → https://cordhr.optipropose.com
+    """
+    from services.whatsapp import send_template_with_button, send_message
+
+    try:
+        send_template_with_button(to_phone)
+    except Exception as e:
+        # Fallback to plain text if template isn't approved yet
+        print(f"[demo] Template send failed ({e}), falling back to text")
+        send_message(to_phone, DEMO_MSG, tenant_id=None)
 
 
 def _get_tenant_by_number_id(phone_number_id: str) -> dict | None:
