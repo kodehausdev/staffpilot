@@ -3,75 +3,88 @@ import { useState } from 'react'
 import Link from 'next/link'
 import {
   MessageSquare, ArrowRight, CheckCircle,
-  CalendarOff, CreditCard, FileText, HelpCircle,
-  Zap, Users, Shield,
+  CalendarOff, CreditCard, FileText, Shield,
+  Zap, Users, Building2, Phone, Star,
 } from 'lucide-react'
+
+// ─── Data ─────────────────────────────────────────────────────────────────────
 
 const PAIN = [
   {
-    problem: 'Leave requests lost in group chats',
-    fix: 'Employees text the bot. Manager approves. Done.',
+    problem: 'Leave requests buried in group chats',
+    fix: 'Employee texts the bot. Manager approves with one reply. Done.',
   },
   {
-    problem: 'Payslips shared as blurry photos',
-    fix: 'Clean payslip delivered on WhatsApp, every month.',
+    problem: 'Payslips shared as blurry screenshots',
+    fix: 'Clean payslip delivered on WhatsApp, every month, automatically.',
   },
   {
-    problem: 'HR policy? Nobody knows where the doc is',
-    fix: 'Employees ask. AI answers — from your actual handbook.',
+    problem: 'Same HR questions asked 10 times a day',
+    fix: 'Employees ask CordHR. AI answers from your actual handbook — 24/7.',
   },
 ]
 
 const STEPS = [
   {
     n: '01',
-    title: 'Sign up & add your team',
-    body: 'Create your company account and add employees in under 5 minutes. Import via CSV or add one by one.',
+    title: 'Sign up and connect WhatsApp',
+    body:  'Create your company account. Connect your WhatsApp Business number in one click via Meta — no developer needed, no waiting.',
   },
   {
     n: '02',
-    title: 'Upload your HR handbook',
-    body: 'Drop in your policy PDF. CordHR reads it so your employees can ask any HR question and get accurate answers.',
+    title: 'Add your team and upload your handbook',
+    body:  'Add employees in under 5 minutes — CSV or one by one. Upload your HR policy PDF and CordHR reads it so your team can ask anything.',
   },
   {
     n: '03',
-    title: 'Your team starts texting',
-    body: 'Share the WhatsApp number. From day one, employees handle leave, payslips, and HR questions without bothering you.',
+    title: 'Your employees start texting',
+    body:  'Share your WhatsApp number. Leave, payslips, HR questions — handled automatically from day one. You stop being the middleman.',
   },
 ]
 
 const FEATURES = [
   {
-    icon: CalendarOff,
+    icon:  CalendarOff,
     title: 'Leave management',
-    body: 'Employees request leave via WhatsApp. Managers approve or reject with a single reply. Balance updates automatically.',
+    body:  'Employees request leave via WhatsApp. Managers approve or reject with a single reply. Balances update automatically — no spreadsheet.',
   },
   {
-    icon: CreditCard,
+    icon:  CreditCard,
     title: 'Payslips on WhatsApp',
-    body: 'Upload monthly payslips to the dashboard. Employees receive them instantly — no email, no portal login.',
+    body:  'Upload monthly payslips to the dashboard. Employees receive them instantly — no email, no portal login, no chasing.',
   },
   {
-    icon: FileText,
-    title: 'HR Q&A',
-    body: 'Upload your employee handbook once. CordHR answers policy questions around the clock so you don\'t have to.',
+    icon:  FileText,
+    title: 'HR policy Q&A',
+    body:  'Upload your employee handbook once. CordHR answers policy questions around the clock so you don\'t have to repeat yourself.',
   },
   {
-    icon: Shield,
-    title: 'Multi-tenant security',
-    body: 'Every company\'s data is completely isolated. Row-level security ensures your data never touches another account.',
+    icon:  Shield,
+    title: 'Your own WhatsApp number',
+    body:  'Each company gets their own WhatsApp Business number. Your employees\' data never mixes with another company\'s — full isolation.',
+  },
+  {
+    icon:  Building2,
+    title: 'Multi-branch support',
+    body:  'Manage employees across multiple locations from one dashboard. Coming soon for retail chains, logistics, and franchise businesses.',
+    badge: 'Coming soon',
+  },
+  {
+    icon:  Zap,
+    title: 'One-click WhatsApp setup',
+    body:  'Connect your WhatsApp Business number in under 2 minutes via Meta\'s Embedded Signup — no developer, no API keys, no waiting.',
   },
 ]
 
 const PLANS = [
   {
-    name: 'Starter',
-    tagline: 'Stop answering the same HR questions every day.',
-    monthly: 50000,
-    annual: 500000,
-    staff: 30,
+    name:     'Starter',
+    tagline:  'Stop answering the same HR questions every day.',
+    monthly:  50000,
+    annual:   500000,
+    staff:    30,
     features: [
-      'WhatsApp HR bot',
+      'Your own WhatsApp Business number',
       'Leave requests & tracking',
       'Payslips on WhatsApp',
       'Company handbook Q&A',
@@ -79,49 +92,54 @@ const PLANS = [
       'Email support',
     ],
     popular: false,
-    cta: 'Start free',
+    cta:     'Try it free',
   },
   {
-    name: 'Growth',
-    tagline: 'Run HR like a system, not a struggle.',
-    monthly: 150000,
-    annual: 1500000,
-    staff: 150,
+    name:     'Growth',
+    tagline:  'Run HR like a system, not a struggle.',
+    monthly:  150000,
+    annual:   1500000,
+    staff:    150,
     features: [
       'Everything in Starter',
       'Up to 150 employees',
-      'Advanced multi-doc RAG',
+      'Multi-document RAG',
       'Role-based access (Admin, HR, Manager)',
       'HR document management',
-      'Activity logs',
+      'Activity logs & audit trail',
       'Priority support',
     ],
     popular: true,
-    cta: 'Start free',
+    cta:     'Try it free',
   },
   {
-    name: 'Enterprise',
-    tagline: 'Turn HR into infrastructure.',
-    monthly: null,
-    annual: null,
-    staff: null,
+    name:     'Enterprise',
+    tagline:  'Turn HR into infrastructure.',
+    monthly:  null,
+    annual:   null,
+    staff:    null,
     features: [
       'Everything in Growth',
       'Unlimited employees',
+      'Multi-branch management',
       'Custom approval workflows',
-      'Founder/exec WhatsApp commands',
-      'Analytics & leave trend insights',
+      'Analytics & leave insights',
       'API access',
       'Dedicated onboarding',
     ],
     popular: false,
-    cta: 'Contact us',
+    cta:     'Contact us',
   },
 ]
+
+const CORD_NUMBER    = '+2349116734196'
+const CORD_NUMBER_DISPLAY = '+234 911 673 4196'
 
 function fmt(n: number) {
   return '₦' + n.toLocaleString('en-NG')
 }
+
+// ─── Page ──────────────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
   const [annual, setAnnual] = useState(false)
@@ -130,7 +148,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-sp-bg text-sp-text">
 
       {/* ── Nav ─────────────────────────────────────── */}
-      <header className="border-b border-white/[0.06] px-6 py-4">
+      <header className="border-b border-white/[0.06] px-6 py-4 sticky top-0 z-50 bg-sp-bg/80 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-sp-accent flex items-center justify-center">
@@ -141,10 +159,19 @@ export default function LandingPage() {
           <div className="flex items-center gap-3">
             <Link
               href="/login"
-              className="text-sm text-sp-muted hover:text-sp-text transition-colors"
+              className="text-sm text-sp-muted hover:text-sp-text transition-colors hidden sm:block"
             >
               Sign in
             </Link>
+            <a
+              href={`https://wa.me/${CORD_NUMBER}?text=Hi`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-sp-muted border border-sp-border px-4 py-2 rounded-lg hover:border-[#25D366] hover:text-[#25D366] transition-colors font-medium hidden sm:flex items-center gap-1.5"
+            >
+              <MessageSquare size={13} />
+              Try the demo
+            </a>
             <Link
               href="/login"
               className="text-sm bg-sp-accent text-white px-4 py-2 rounded-lg hover:bg-emerald-400 transition-colors font-medium"
@@ -159,20 +186,27 @@ export default function LandingPage() {
       <section className="max-w-6xl mx-auto px-6 pt-24 pb-20 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-sp-accent/10 border border-sp-accent/20 text-sp-accent text-xs font-medium mb-8">
           <Zap size={11} />
-          Built for Nigerian SMEs
+          Built for Nigerian businesses
         </div>
 
         <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-none mb-6">
-          HR that's actually{' '}
-          <span className="text-sp-accent">cordial.</span>
+          Stop managing HR<br />
+          <span className="text-sp-accent">in your DMs.</span>
         </h1>
 
-        <p className="text-lg md:text-xl text-sp-muted max-w-2xl mx-auto mb-10 leading-relaxed">
-          Leave. Payslips. HR questions. Your team handles it all on WhatsApp —
-          where they already are.
+        <p className="text-lg md:text-xl text-sp-muted max-w-2xl mx-auto mb-4 leading-relaxed">
+          Leave requests, payslips, HR questions — your employees handle it all
+          on WhatsApp. CordHR handles the rest.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+        <p className="text-sm text-sp-muted mb-10">
+          Used by{' '}
+          <span className="text-sp-text font-medium">Everyday Grocers</span>
+          {' '}and growing Nigerian businesses.
+        </p>
+
+        {/* CTAs */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6">
           <Link
             href="/login"
             className="flex items-center gap-2 bg-sp-accent text-white px-6 py-3 rounded-xl font-medium hover:bg-emerald-400 transition-colors text-sm"
@@ -180,45 +214,85 @@ export default function LandingPage() {
             Get started free <ArrowRight size={15} />
           </Link>
           <a
-            href="mailto:hi.kodehaus@gmail.com?subject=CordHR Demo"
-            className="flex items-center gap-2 border border-sp-border text-sp-muted px-6 py-3 rounded-xl font-medium hover:text-sp-text hover:border-white/20 transition-colors text-sm"
+            href={`https://wa.me/${CORD_NUMBER}?text=Hi`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 bg-[#25D366]/10 border border-[#25D366]/30 text-[#25D366] px-6 py-3 rounded-xl font-medium hover:bg-[#25D366]/20 transition-colors text-sm"
           >
-            Book a demo
+            <MessageSquare size={14} fill="currentColor" />
+            Text {CORD_NUMBER_DISPLAY} to try it live
           </a>
         </div>
+
+        <p className="text-xs text-sp-muted">
+          No credit card required · Your own WhatsApp number included
+        </p>
 
         {/* WhatsApp mockup */}
         <div className="mt-20 flex justify-center">
           <div className="w-72 bg-[#111] rounded-3xl border border-white/10 shadow-2xl overflow-hidden">
-            {/* Phone header */}
             <div className="bg-[#1a1a1a] px-4 py-3 flex items-center gap-3 border-b border-white/[0.06]">
               <div className="w-8 h-8 rounded-full bg-sp-accent flex items-center justify-center shrink-0">
                 <MessageSquare size={13} className="text-white" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-sp-text">CordHR Bot</p>
+                <p className="text-xs font-semibold text-sp-text">CordHR · Everyday Grocers</p>
                 <p className="text-[10px] text-sp-accent">● Online</p>
               </div>
             </div>
-            {/* Chat */}
             <div className="px-3 py-4 space-y-2.5 text-[11px]">
               <Bubble from="employee" text="Hi, I need 3 days leave from Dec 10" />
-              <Bubble from="bot" text="✓ Leave request submitted for Dec 10–12. Your manager has been notified." />
+              <Bubble from="bot"      text="✓ Leave request submitted for Dec 10–12. Your manager has been notified." />
               <Bubble from="employee" text="What's my leave balance?" />
-              <Bubble from="bot" text="You have 12 days annual leave remaining." />
+              <Bubble from="bot"      text="You have 12 days annual leave remaining." />
               <Bubble from="employee" text="Send me my November payslip" />
-              <Bubble from="bot" text="💰 November — Net ₦238,500. Gross ₦280,000." />
+              <Bubble from="bot"      text="💰 November — Net ₦238,500. Gross ₦280,000." />
+              <Bubble from="employee" text="What's the maternity leave policy?" />
+              <Bubble from="bot"      text="Per your company handbook: 12 weeks paid maternity leave, starting from date of delivery." />
             </div>
           </div>
         </div>
       </section>
 
+      {/* ── Social proof strip ──────────────────────── */}
+      <div className="border-y border-white/[0.06] py-5 bg-sp-surface/30">
+        <div className="max-w-6xl mx-auto px-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-3">
+          <div className="flex items-center gap-2 text-sm text-sp-muted">
+            <div className="w-6 h-6 rounded-md bg-emerald-500/20 flex items-center justify-center">
+              <CheckCircle size={12} className="text-sp-accent" />
+            </div>
+            <span>Live on WhatsApp Business API</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-sp-muted">
+            <div className="w-6 h-6 rounded-md bg-emerald-500/20 flex items-center justify-center">
+              <Shield size={12} className="text-sp-accent" />
+            </div>
+            <span>Meta Verified integration</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-sp-muted">
+            <div className="w-6 h-6 rounded-md bg-emerald-500/20 flex items-center justify-center">
+              <Zap size={12} className="text-sp-accent" />
+            </div>
+            <span>Live in under 5 minutes</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-sp-muted">
+            <div className="w-6 h-6 rounded-md bg-emerald-500/20 flex items-center justify-center">
+              <Building2 size={12} className="text-sp-accent" />
+            </div>
+            <span>Trusted by Nigerian SMEs</span>
+          </div>
+        </div>
+      </div>
+
       {/* ── Pain → Fix ──────────────────────────────── */}
-      <section className="bg-sp-surface/50 border-y border-white/[0.06] py-20">
+      <section className="py-24">
         <div className="max-w-6xl mx-auto px-6">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-14">
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">
             Sound familiar?
           </h2>
+          <p className="text-center text-sp-muted mb-14">
+            Every Nigerian HR admin knows this pain.
+          </p>
           <div className="grid md:grid-cols-3 gap-6">
             {PAIN.map(({ problem, fix }) => (
               <div key={problem} className="bg-sp-surface rounded-2xl border border-white/[0.06] p-6 space-y-4">
@@ -233,12 +307,43 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Live demo CTA ───────────────────────────── */}
+      <section className="bg-[#25D366]/5 border-y border-[#25D366]/20 py-16">
+        <div className="max-w-2xl mx-auto px-6 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#25D366]/10 border border-[#25D366]/20 text-[#25D366] text-xs font-medium mb-6">
+            <Phone size={11} />
+            Live demo — no sign-up needed
+          </div>
+          <h2 className="text-2xl md:text-3xl font-bold mb-3">
+            See it work right now
+          </h2>
+          <p className="text-sp-muted text-sm mb-8 leading-relaxed">
+            Text <span className="text-sp-text font-mono font-medium">{CORD_NUMBER_DISPLAY}</span> on WhatsApp.
+            Say "hi" and experience exactly what your employees will see.
+          </p>
+          <a
+            href={`https://wa.me/${CORD_NUMBER}?text=Hi`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2.5 bg-[#25D366] hover:bg-[#1ead58] text-black font-semibold px-8 py-3.5 rounded-xl transition-colors text-sm"
+          >
+            <MessageSquare size={16} fill="currentColor" />
+            Open WhatsApp to chat with CordHR
+          </a>
+          <p className="text-xs text-sp-muted mt-4">
+            Works on any WhatsApp — Android, iPhone, or Web
+          </p>
+        </div>
+      </section>
+
       {/* ── How it works ────────────────────────────── */}
       <section className="py-24">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-14">
-            <h2 className="text-3xl md:text-4xl font-bold mb-3">Up and running in a day</h2>
-            <p className="text-sp-muted">No IT team required.</p>
+            <h2 className="text-3xl md:text-4xl font-bold mb-3">
+              Live in under 5 minutes
+            </h2>
+            <p className="text-sp-muted">No IT team. No developer. No waiting.</p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
             {STEPS.map(({ n, title, body }) => (
@@ -254,15 +359,48 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Social proof quote ───────────────────────── */}
+      <section className="bg-sp-surface/50 border-y border-white/[0.06] py-16">
+        <div className="max-w-2xl mx-auto px-6 text-center">
+          <div className="flex justify-center gap-0.5 mb-6">
+            {[...Array(5)].map((_, i) => (
+              <Star key={i} size={16} className="text-amber-400 fill-amber-400" />
+            ))}
+          </div>
+          <blockquote className="text-lg md:text-xl text-sp-text font-medium mb-6 leading-relaxed">
+            "Our staff used to DM me for everything — leave requests, payslips,
+            policy questions. Now they just text CordHR. I haven't been chased
+            for a payslip in two months."
+          </blockquote>
+          <div className="flex items-center justify-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+              <span className="text-sm font-bold text-sp-accent">EG</span>
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-medium text-sp-text">HR Manager</p>
+              <p className="text-xs text-sp-muted">Everyday Grocers, Lagos</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── Features ────────────────────────────────── */}
-      <section className="bg-sp-surface/50 border-y border-white/[0.06] py-24">
+      <section className="py-24">
         <div className="max-w-6xl mx-auto px-6">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-14">
-            Everything your HR team needs
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">
+            Everything your HR needs
           </h2>
-          <div className="grid md:grid-cols-2 gap-6">
-            {FEATURES.map(({ icon: Icon, title, body }) => (
-              <div key={title} className="bg-sp-surface rounded-2xl border border-white/[0.06] p-6 flex gap-4">
+          <p className="text-center text-sp-muted mb-14">
+            On WhatsApp. Where your team already is.
+          </p>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {FEATURES.map(({ icon: Icon, title, body, badge }) => (
+              <div key={title} className="bg-sp-surface rounded-2xl border border-white/[0.06] p-6 flex flex-col gap-3 relative">
+                {badge && (
+                  <span className="absolute top-4 right-4 text-[10px] font-bold px-2 py-0.5 rounded-full bg-sp-accent/10 text-sp-accent border border-sp-accent/20">
+                    {badge}
+                  </span>
+                )}
                 <div className="w-10 h-10 rounded-xl bg-sp-accent/10 border border-sp-accent/20 flex items-center justify-center shrink-0">
                   <Icon size={18} className="text-sp-accent" />
                 </div>
@@ -277,12 +415,12 @@ export default function LandingPage() {
       </section>
 
       {/* ── Pricing ─────────────────────────────────── */}
-      <section className="py-24">
+      <section className="bg-sp-surface/50 border-y border-white/[0.06] py-24">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-10">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Simple pricing</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-3">Simple, honest pricing</h2>
+            <p className="text-sp-muted mb-8">Try it free. No credit card required.</p>
 
-            {/* Toggle */}
             <div className="inline-flex items-center gap-3 bg-sp-surface border border-white/[0.06] rounded-xl p-1">
               <button
                 onClick={() => setAnnual(false)}
@@ -344,12 +482,10 @@ export default function LandingPage() {
                   )}
                 </div>
 
-                <div className="flex items-center gap-3 mb-6">
-                  <p className="text-xs text-sp-muted flex items-center gap-1">
-                    <Users size={11} />
-                    {staff ? `Up to ${staff} employees` : 'Unlimited employees'}
-                  </p>
-                </div>
+                <p className="text-xs text-sp-muted mb-6 flex items-center gap-1">
+                  <Users size={11} />
+                  {staff ? `Up to ${staff} employees` : 'Unlimited employees'}
+                </p>
 
                 <ul className="space-y-2.5 mb-8 flex-1">
                   {features.map(f => (
@@ -386,21 +522,35 @@ export default function LandingPage() {
       </section>
 
       {/* ── Final CTA ───────────────────────────────── */}
-      <section className="border-t border-white/[0.06] py-24">
+      <section className="py-24">
         <div className="max-w-2xl mx-auto px-6 text-center">
           <h2 className="text-3xl md:text-5xl font-bold mb-4">
-            Stop managing HR<br />in a group chat.
+            Your team is on WhatsApp.<br />
+            <span className="text-sp-accent">Meet them there.</span>
           </h2>
-          <p className="text-sp-muted mb-8">
-            Your team is already on WhatsApp. CordHR meets them there.
+          <p className="text-sp-muted mb-10 leading-relaxed">
+            Try CordHR live right now — text{' '}
+            <span className="text-sp-text font-mono font-medium">{CORD_NUMBER_DISPLAY}</span>{' '}
+            on WhatsApp, or sign up and go live in under 5 minutes.
           </p>
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-2 bg-sp-accent text-white px-8 py-3.5 rounded-xl font-medium hover:bg-emerald-400 transition-colors"
-          >
-            Get started free <ArrowRight size={16} />
-          </Link>
-          <p className="text-xs text-sp-muted mt-4">No credit card required</p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-2 bg-sp-accent text-white px-8 py-3.5 rounded-xl font-medium hover:bg-emerald-400 transition-colors text-sm"
+            >
+              Get started free <ArrowRight size={16} />
+            </Link>
+            <a
+              href={`https://wa.me/${CORD_NUMBER}?text=Hi`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-[#25D366]/10 border border-[#25D366]/30 text-[#25D366] px-8 py-3.5 rounded-xl font-medium hover:bg-[#25D366]/20 transition-colors text-sm"
+            >
+              <MessageSquare size={15} fill="currentColor" />
+              Try the demo on WhatsApp
+            </a>
+          </div>
+          <p className="text-xs text-sp-muted mt-5">No credit card · No IT team · Your own number included</p>
         </div>
       </section>
 
@@ -411,7 +561,7 @@ export default function LandingPage() {
             <div className="w-5 h-5 rounded-md bg-sp-accent flex items-center justify-center">
               <MessageSquare size={10} className="text-white" />
             </div>
-            <span>© {new Date().getFullYear()} Optipropose Studio. All rights reserved.</span>
+            <span>© {new Date().getFullYear()} Optipropose Studio · All rights reserved.</span>
           </div>
           <div className="flex items-center gap-5">
             <a href="https://optipropose.com" target="_blank" rel="noopener noreferrer" className="hover:text-sp-text transition-colors">OptiPropose</a>

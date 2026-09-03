@@ -17,6 +17,24 @@ from config import get_settings
 
 router = APIRouter()
 
+# ── Shared number config ────────────────────────────────────────────────────
+# This is CordHR's own verified Nigerian number. New tenants are assigned
+# this number by default until they connect their own WABA. It also acts
+# as a public-facing demo line — strangers who text it get a product pitch.
+SHARED_NUMBER_ID = "1282663531587856"
+
+DEMO_MSG = (
+    "👋 Hi there! I'm *CordHR* — an AI-powered HR assistant for businesses.\n\n"
+    "I help companies manage:\n"
+    "• *Leave requests* — employees request and track leave via WhatsApp\n"
+    "• *Payslips* — instant access to salary info\n"
+    "• *HR policy Q&A* — ask anything, get instant answers\n"
+    "• *Manager approvals* — approve or reject requests right here\n\n"
+    "Want to set up CordHR for your company?\n"
+    "👉 cordhr.optipropose.com\n\n"
+    "Already a CordHR user? Ask your HR admin to add your number to the system."
+)
+
 GREETING_MSG = (
     "Hi {name} 👋 I'm CordHR — your company HR assistant.\n\n"
     "I can help with:\n"
@@ -114,17 +132,32 @@ async def _handle_message(from_phone: str, to_number_id: str, text: str):
 async def _process_message(from_phone: str, to_number_id: str, text: str):
     text = text.strip()
 
-    tenant = _get_tenant_by_number_id(to_number_id)
-    if not tenant:
-        send_message(from_phone, "This number is not configured. Contact support.")
-        return
+    # ── Shared number path ───────────────────────────────────────────────────
+    # When a message hits CordHR's shared number, we can't route by number ID
+    # alone (multiple tenants share it). Instead route by the sender's phone:
+    # find which tenant's employee list they belong to.
+    if to_number_id == SHARED_NUMBER_ID:
+        employee = _get_employee_cross_tenant(from_phone)
+        if not employee:
+            # Complete stranger — serve them a product demo
+            send_message(from_phone, DEMO_MSG, tenant_id=None)
+            return
+        # Found — hand off to normal flow with their tenant
+        tenant = {"id": employee["tenant_id"]}
+    else:
+        # ── Dedicated number path ────────────────────────────────────────────
+        # Tenant has their own WABA — route by phone_number_id as before.
+        tenant = _get_tenant_by_number_id(to_number_id)
+        if not tenant:
+            send_message(from_phone, "This number is not configured. Contact support.")
+            return
 
-    employee = _get_employee(from_phone, tenant["id"])
-    if not employee:
-        send_message(from_phone,
-            "You're not registered in this system.\n"
-            "Please ask your HR admin to add you.", tenant_id=tenant["id"])
-        return
+        employee = _get_employee(from_phone, tenant["id"])
+        if not employee:
+            send_message(from_phone,
+                "You're not registered in this system.\n"
+                "Please ask your HR admin to add you.", tenant_id=tenant["id"])
+            return
 
     sess = session_svc.get_session(employee["id"])
     current_flow = sess.get("current_flow")
@@ -408,6 +441,25 @@ def _get_employee(phone: str, tenant_id: str) -> dict | None:
         .select("*")
         .eq("phone", phone)
         .eq("tenant_id", tenant_id)
+        .eq("is_active", True)
+        .limit(1)
+        .execute()
+    )
+    return result.data[0] if result.data else None
+
+
+def _get_employee_cross_tenant(phone: str) -> dict | None:
+    """
+    Look up an employee by phone across ALL active tenants.
+    Used when a message arrives on the shared CordHR number — we can't
+    route by phone_number_id alone since multiple tenants share it.
+    Employee phone numbers are unique per person so this is safe.
+    """
+    sb = get_supabase()
+    result = (
+        sb.table("employees")
+        .select("*")
+        .eq("phone", phone)
         .eq("is_active", True)
         .limit(1)
         .execute()
