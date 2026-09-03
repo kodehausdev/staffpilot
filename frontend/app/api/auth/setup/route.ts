@@ -26,10 +26,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ tenant_id: existing.tenant_id })
     }
 
-    // 1. Create tenant
+    // 1. Create tenant — pre-assign CordHR's shared number so the bot works
+    //    immediately after signup. Tenant can connect their own WABA from Settings.
+    const SHARED_NUMBER_ID = '1282663531587856'
+
     const { data: tenant, error: tenantErr } = await supabase
       .from('tenants')
-      .insert({ name: company || email.split('@')[0], plan: 'starter' })
+      .insert({
+        name:            company || email.split('@')[0],
+        plan:            'starter',
+        whatsapp_number: SHARED_NUMBER_ID,
+      })
       .select()
       .single()
 

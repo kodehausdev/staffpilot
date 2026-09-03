@@ -51,6 +51,9 @@ export default function SettingsPage() {
   const [waConnected, setWaConnected] = useState(false)
   const [pin, setPin]                 = useState('')
   const [pinError, setPinError]       = useState('')
+
+  const SHARED_NUMBER_ID = '1282663531587856'
+  const isSharedNumber   = waNumber === SHARED_NUMBER_ID
   const [subscribeWarning, setSubscribeWarning] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [fullName, setFullName]         = useState('')
@@ -197,7 +200,7 @@ export default function SettingsPage() {
   }
 
   // ── Exchange Meta code → phone_number_id via backend ──────────────────────
-  async function exchangeCode(code: string, pin: string) {
+  async function exchangeCode(code: string, pin: string = '') {
     if (!tenantId) {
       setError('Session not ready — please refresh and try again.')
       return
@@ -309,23 +312,24 @@ export default function SettingsPage() {
               WhatsApp Business
             </label>
 
-            {waConnected ? (
+            {waConnected && !isSharedNumber ? (
+              // ── Tenant has their own dedicated WABA number ──────────────
               <div className="flex items-center gap-3 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3">
                 <CheckCircle2 size={15} className="text-green-400 shrink-0" />
                 <div>
-                  <p className="text-xs font-medium text-green-400">Connected</p>
+                  <p className="text-xs font-medium text-green-400">Your number — Connected</p>
                   <p className="text-[11px] text-sp-muted font-mono mt-0.5">{waNumber}</p>
                 </div>
               </div>
             ) : (
-              <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
-                <Clock size={15} className="text-amber-400 shrink-0 mt-0.5" />
+              // ── Tenant is on CordHR's shared number ─────────────────────
+              <div className="flex items-start gap-3 rounded-xl border border-sp-border bg-sp-surface px-4 py-3">
+                <MessageSquare size={15} className="text-sp-accent shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-xs font-medium text-amber-400">Activation in progress</p>
+                  <p className="text-xs font-medium text-sp-text">Using CordHR shared line</p>
                   <p className="text-[11px] text-sp-muted mt-0.5">
-                    {hoursLeft !== null && hoursLeft > 0
-                      ? `We assign your number by hand — expect it live within ${hoursLeft}h.`
-                      : "We assign your number by hand — we've been notified this one's overdue."}
+                    Your employees can already text the CordHR number and the bot will respond.
+                    Connect your own WhatsApp number below to get a dedicated line for your company.
                   </p>
                 </div>
               </div>
@@ -353,7 +357,7 @@ export default function SettingsPage() {
 
             {showAdvanced && (
               <div className="mt-3 space-y-3">
-                {/* PIN input */}
+                {/* PIN */}
                 <div>
                   <label className="text-xs text-sp-muted mb-1 block font-medium">
                     Set a 6-digit security PIN
@@ -371,9 +375,7 @@ export default function SettingsPage() {
                     }}
                     className="input w-full font-mono tracking-widest text-center text-lg"
                   />
-                  {pinError && (
-                    <p className="text-[11px] text-red-400 mt-1">{pinError}</p>
-                  )}
+                  {pinError && <p className="text-[11px] text-red-400 mt-1">{pinError}</p>}
                   <p className="text-[11px] text-sp-muted mt-1">
                     You'll need this PIN if you ever migrate your WhatsApp number. Keep it safe.
                   </p>
@@ -386,11 +388,11 @@ export default function SettingsPage() {
                   className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#25D366] hover:bg-[#1ead58] active:bg-[#17a050] disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold text-xs py-3 px-4 transition-all"
                 >
                   <MessageSquare size={14} fill="currentColor" />
-                  {saving ? 'Connecting…' : !sdkReady ? 'Loading…' : waConnected ? 'Reconnect via Meta' : 'Connect WhatsApp via Meta'}
+                  {saving ? 'Connecting…' : !sdkReady ? 'Loading…' : !isSharedNumber ? 'Reconnect via Meta' : 'Connect Your Own Number'}
                 </button>
                 <p className="text-[11px] text-sp-muted">
-                  Opens a Meta popup. Sign in and select your WhatsApp Business account — your number
-                  will be activated automatically.
+                  Opens a Meta popup. Sign in with your Facebook Business account and select
+                  your WhatsApp Business number — it activates automatically.
                 </p>
               </div>
             )}
