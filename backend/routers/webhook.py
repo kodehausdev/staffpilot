@@ -506,9 +506,10 @@ def send_demo_cta(to_phone: str) -> None:
     Button:        Visit website → https://cordhr.optipropose.com
     """
     from services.whatsapp import send_template_with_button, send_message
-
+    print(f"[demo] Sending demo to {to_phone}")
     try:
         send_template_with_button(to_phone)
+        print(f"[demo] Template sent successfully to {to_phone}")
     except Exception as e:
         # Fallback to plain text if template isn't approved yet
         print(f"[demo] Template send failed ({e}), falling back to text")
