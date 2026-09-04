@@ -137,16 +137,50 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
     # alone (multiple tenants share it). Instead route by the sender's phone:
     # find which tenant's employee list they belong to.
     if to_number_id == SHARED_NUMBER_ID:
-        employee = _get_employee_cross_tenant(from_phone)
+        employee      = _get_employee_cross_tenant(from_phone)
+        shared_tenant = _get_tenant_by_number_id(SHARED_NUMBER_ID)
+
         if not employee:
-            # Complete stranger — serve a product demo, but throttle to once
-            # per 24 hours so we don't spam them and stay on Meta's good side.
+            # True stranger — not registered under any tenant.
+            # Send product demo, throttled to once per 24hrs.
             if _should_send_demo(from_phone):
                 _record_demo_sent(from_phone)
                 send_demo_cta(from_phone)
             return
-        # Found — hand off to normal flow with their tenant
-        tenant = {"id": employee["tenant_id"]}
+
+        # Employee found — but which tenant do they belong to?
+        if shared_tenant and employee["tenant_id"] == shared_tenant["id"]:
+            # Registered under the CordHR shared-number tenant — serve normally.
+            tenant = shared_tenant
+        else:
+            # They belong to a different tenant that has its own dedicated number.
+            # Serving full HR content over the shared line wastes tokens and is
+            # confusing — send a friendly redirect instead.
+            sb         = get_supabase()
+            tenant_res = (
+                sb.table("tenants")
+                .select("name, whatsapp_number")
+                .eq("id", employee["tenant_id"])
+                .limit(1)
+                .execute()
+            )
+            tenant_row = tenant_res.data[0] if tenant_res.data else None
+
+            if tenant_row and tenant_row.get("whatsapp_number") != SHARED_NUMBER_ID:
+                company_name = tenant_row.get("name", "your company")
+                send_message(
+                    from_phone,
+                    f"Hi 👋 You're registered with *{company_name}*.
+
+"
+                    f"Please use your company's dedicated WhatsApp number to chat "
+                    f"with CordHR. Ask your HR admin for the correct contact.",
+                    tenant_id=None,  # use system token, not their tenant's OBO
+                )
+            else:
+                # Their tenant is also on the shared line — route normally.
+                tenant = {"id": employee["tenant_id"]}
+            return
     else:
         # ── Dedicated number path ────────────────────────────────────────────
         # Tenant has their own WABA — route by phone_number_id as before.
