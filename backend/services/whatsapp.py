@@ -156,6 +156,8 @@ def send_template_with_button(to_phone: str) -> None:
         )
 
     if resp.status_code != 200:
+        print(f"[demo] Template API response: {resp.status_code} {resp.text}")
+
         raise Exception(f"Template send failed: {resp.status_code} {resp.text}")
 
 
