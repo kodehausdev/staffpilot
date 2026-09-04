@@ -143,9 +143,13 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         if not employee:
             # True stranger — not registered under any tenant.
             # Send product demo, throttled to once per 24hrs.
+            print(f"[webhook] Stranger on shared number: {from_phone}")
             if _should_send_demo(from_phone):
+                print(f"[webhook] Sending demo to {from_phone}")
                 _record_demo_sent(from_phone)
                 send_demo_cta(from_phone)
+            else:
+                print(f"[webhook] Demo throttled for {from_phone} — already sent within 24hrs")
             return
 
         # Employee found — but which tenant do they belong to?
@@ -168,13 +172,16 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
 
             if tenant_row and tenant_row.get("whatsapp_number") != SHARED_NUMBER_ID:
                 company_name = tenant_row.get("name", "your company")
-                send_message(
-                    from_phone,
-                    f"Hi 👋 You're registered with *{company_name}*.\n\n"
-                    f"Please use your company's dedicated WhatsApp number to chat "
-                    f"with CordHR. Ask your HR admin for the correct contact.",
-                    tenant_id=None,  # use system token, not their tenant's OBO
-                )
+                # Throttle redirect to once per 24hrs — don't repeat every message
+                if _should_send_demo(from_phone):
+                    _record_demo_sent(from_phone)
+                    send_message(
+                        from_phone,
+                        f"Hi 👋 You're registered with {company_name}."
+                        f"Please use your company's dedicated WhatsApp number to chat "
+                        f"with CordHR. Ask your HR admin for the correct contact.",
+                        tenant_id=None,  # use system token, not their tenant's OBO
+                    )
             else:
                 # Their tenant is also on the shared line — route normally.
                 tenant = {"id": employee["tenant_id"]}
@@ -485,11 +492,14 @@ def _should_send_demo(phone: str) -> bool:
 
 def _record_demo_sent(phone: str) -> None:
     """Upsert the demo contact record with current timestamp."""
-    sb = get_supabase()
+    from datetime import datetime, timezone
+    sb  = get_supabase()
+    now = datetime.now(timezone.utc).isoformat()
     sb.table("demo_contacts").upsert(
-        {"phone": phone, "last_demo_sent_at": "now()", "message_count": 1},
+        {"phone": phone, "last_demo_sent_at": now, "message_count": 1},
         on_conflict="phone",
     ).execute()
+    print(f"[demo] Recorded demo sent to {phone} at {now}")
 
 
 def send_demo_cta(to_phone: str) -> None:
