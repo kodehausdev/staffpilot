@@ -168,16 +168,13 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
 
             if tenant_row and tenant_row.get("whatsapp_number") != SHARED_NUMBER_ID:
                 company_name = tenant_row.get("name", "your company")
-                # Throttle to once per 24hrs — don't repeat on every message
-                if _should_send_demo(from_phone):
-                    _record_demo_sent(from_phone)
-                    send_message(
-                        from_phone,
-                        f"Hi 👋 You're registered with *{company_name}*"
-                        f"Please use your company's dedicated WhatsApp number to chat "
-                        f"with CordHR. Ask your HR admin for the correct contact.",
-                        tenant_id=None,  # use system token, not their tenant's OBO
-                    )
+                send_message(
+                    from_phone,
+                    f"Hi 👋 You're registered with *{company_name}*.\n\n"
+                    f"Please use your company's dedicated WhatsApp number to chat "
+                    f"with CordHR. Ask your HR admin for the correct contact.",
+                    tenant_id=None,  # use system token, not their tenant's OBO
+                )
             else:
                 # Their tenant is also on the shared line — route normally.
                 tenant = {"id": employee["tenant_id"]}
