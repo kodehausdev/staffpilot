@@ -177,7 +177,7 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
                     _record_demo_sent(from_phone)
                     send_message(
                         from_phone,
-                        f"Hi 👋 You're registered with {company_name}."
+                        f"Hi 👋 You're registered with {company_name}"
                         f"Please use your company's dedicated WhatsApp number to chat "
                         f"with CordHR. Ask your HR admin for the correct contact.",
                         tenant_id=None,  # use system token, not their tenant's OBO

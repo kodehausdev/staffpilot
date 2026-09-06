@@ -8,7 +8,7 @@ import re
 from config import get_settings
 from db.supabase_client import get_supabase
 
-GRAPH_URL = "https://graph.facebook.com/v19.0"
+GRAPH_URL = "https://graph.facebook.com/v20.0"
 
 
 def _get_tenant_phone_id(tenant_id: str) -> str | None:
@@ -101,41 +101,18 @@ def send_template(to_phone: str, template_name: str, lang: str = "en", tenant_id
 
 def send_template_with_button(to_phone: str) -> None:
     """
-    Send the CordHR demo pitch template with a Visit Website CTA button.
-
-    Meta template setup (do this once in Meta Business Manager):
-    ─────────────────────────────────────────────────────────────
-    Name:     cordhr_demo
-    Category: MARKETING
-    Language: English
-
-    Header (text): Meet CordHR 👋
-
-    Body:
-      I'm CordHR — an AI HR assistant that runs on WhatsApp.
-      Businesses use me to handle leave requests, payslips,
-      and HR policy questions — all without leaving WhatsApp.
-
-    Footer: cordhr.optipropose.com
-
-    Button type:  URL
-    Button label: Visit Website
-    Button URL:   https://cordhr.optipropose.com
-    ─────────────────────────────────────────────────────────────
-    Submit for review — usually approved within a few hours.
-    Until approved, the fallback plain-text DEMO_MSG is used instead.
+    Send the CordHR demo template (cordhr_demo) with Visit Website button.
+    Uses CordHR's own system token and phone_number_id — always.
+    Template must be Active in WhatsApp Manager before this will work.
     """
-    s     = get_settings()
-    phone = to_phone.replace("+", "").replace(" ", "")
-    if phone.startswith("+"):
-        phone = phone[1:]
+    s = get_settings()
 
-    config = _get_tenant_config(s.whatsapp_phone_number_id) if hasattr(s, 'whatsapp_phone_number_id') else {
-        "phone_number_id": s.whatsapp_phone_number_id,
-        "access_token":    s.whatsapp_access_token,
-    }
+    # Strip to digits only — no +, no spaces
+    phone = re.sub(r"\D", "", to_phone)
 
-    with httpx.Client(timeout=10) as client:
+    print(f"[demo] Calling template API: phone_number_id={s.whatsapp_phone_number_id} to={phone}")
+
+    with httpx.Client(timeout=15) as client:
         resp = client.post(
             f"{GRAPH_URL}/{s.whatsapp_phone_number_id}/messages",
             headers={
@@ -144,20 +121,18 @@ def send_template_with_button(to_phone: str) -> None:
             },
             json={
                 "messaging_product": "whatsapp",
-                "to":               phone,
-                "type":             "template",
+                "to":                phone,
+                "type":              "template",
                 "template": {
                     "name":     "cordhr_demo",
                     "language": {"code": "en"},
-                    # No components needed if template has no variables
-                    # Add components here if you use {{1}} placeholders
                 },
             },
         )
 
-    if resp.status_code != 200:
-        print(f"[demo] Template API response: {resp.status_code} {resp.text}")
+    print(f"[demo] Template API response: {resp.status_code} {resp.text}")
 
+    if resp.status_code != 200:
         raise Exception(f"Template send failed: {resp.status_code} {resp.text}")
 
 
