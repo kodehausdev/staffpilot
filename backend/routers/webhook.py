@@ -11,7 +11,7 @@ from db.supabase_client import get_supabase
 from services import session as session_svc
 from services import leave, qa, payslip, onboarding, insights, tickets, chat
 from services.llama import classify_intent
-from services.whatsapp import send_message, parse_webhook
+from services.whatsapp import send_message, send_buttons, send_list, parse_webhook
 from services.gating import whatsapp_gate
 from config import get_settings
 
@@ -177,7 +177,7 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
                     _record_demo_sent(from_phone)
                     send_message(
                         from_phone,
-                        f"Hi 👋 You're registered with {company_name}"
+                        f"Hi 👋 You're registered with {company_name}."
                         f"Please use your company's dedicated WhatsApp number to chat "
                         f"with CordHR. Ask your HR admin for the correct contact.",
                         tenant_id=None,  # use system token, not their tenant's OBO
@@ -356,7 +356,20 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
     # ── GREETING ────────────────────────────────────────────────────────────
     if _is_greeting:
         name = employee.get("name") or "there"
-        send_message(from_phone, GREETING_MSG.format(name=name), tenant_id=employee["tenant_id"])
+        send_buttons(
+            to_phone=from_phone,
+            body=f"Hi {name} 👋 I'm CordHR — your company HR assistant.\n\n"
+                 "What do you need?",
+
+            buttons=[
+                {"id": "leave",   "title": "📅 Leave request"},
+                {"id": "payslip", "title": "💰 My payslip"},
+                {"id": "policy",  "title": "📋 HR policy Q&A"},
+                {"id": "something_else", "title": "❓ Something else"}
+            ],
+            footer="CordHR · Powered by Optipropose Studio",
+            tenant_id=employee["tenant_id"],
+        )
 
     # ── ACTION LAYER — user-specific data ───────────────────────────────────
 
@@ -504,23 +517,19 @@ def _record_demo_sent(phone: str) -> None:
 
 def send_demo_cta(to_phone: str) -> None:
     """
-    Send the CordHR demo pitch as a WhatsApp template message with a
-    'Visit website' CTA button — reduces typing and looks professional.
+    Send the CordHR demo pitch to a stranger who just texted the shared number.
 
-    Template name: cordhr_demo  (must be approved in Meta Business Manager)
-    Template body: Hi there! I'm CordHR — an AI HR assistant for businesses.
-                   Manage leave, payslips, and HR policy via WhatsApp.
-    Button:        Visit website → https://cordhr.optipropose.com
+    Since the stranger initiated contact, the 24hr conversation window is open —
+    free-form text delivers immediately. No template needed here.
+
+    The cordhr_demo template is reserved for RE-ENGAGEMENT only — when reaching
+    out AFTER the 24hr window has closed (Meta requires approved template then).
     """
-    from services.whatsapp import send_template_with_button, send_message
-    print(f"[demo] Sending demo to {to_phone}")
-    try:
-        send_template_with_button(to_phone)
-        print(f"[demo] Template sent successfully to {to_phone}")
-    except Exception as e:
-        # Fallback to plain text if template isn't approved yet
-        print(f"[demo] Template send failed ({e}), falling back to text")
-        send_message(to_phone, DEMO_MSG, tenant_id=None)
+    from services.whatsapp import send_message
+    print(f"[demo] Sending demo text to {to_phone}")
+    send_message(to_phone, DEMO_MSG, tenant_id=None)
+    print(f"[demo] Demo sent to {to_phone}")
+
 
 
 def _get_tenant_by_number_id(phone_number_id: str) -> dict | None:
