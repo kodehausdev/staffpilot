@@ -23,17 +23,42 @@ router = APIRouter()
 # as a public-facing demo line — strangers who text it get a product pitch.
 SHARED_NUMBER_ID = "1282663531587856"
 
-DEMO_MSG = (
-    "👋 Hi there! I'm *CordHR* — an AI-powered HR assistant for businesses.\n\n"
-    "I help companies manage:\n"
-    "• *Leave requests* — employees request and track leave via WhatsApp\n"
-    "• *Payslips* — instant access to salary info\n"
-    "• *HR policy Q&A* — ask anything, get instant answers\n"
-    "• *Manager approvals* — approve or reject requests right here\n\n"
-    "Want to set up CordHR for your company?\n"
-    "👉 cordhr.optipropose.com\n\n"
-    "Already a CordHR user? Ask your HR admin to add your number to the system."
-)
+# Three-stage stranger conversation — not the same message 3 times.
+DEMO_STAGES = [
+    # Stage 1 — first contact, full product pitch
+    (
+        "\U0001F44B Hi there! I'm *CordHR* \u2014 an AI-powered HR assistant for Nigerian businesses.\n\n"
+        "I help companies manage:\n"
+        "\u2022 *Leave requests* \u2014 employees request and track leave via WhatsApp\n"
+        "\u2022 *Payslips* \u2014 instant access to salary info\n"
+        "\u2022 *HR policy Q&A* \u2014 ask anything, get instant answers\n"
+        "\u2022 *Manager approvals* \u2014 approve or reject right here\n\n"
+        "Want to set up CordHR for your company?\n"
+        "\U0001F449 cordhr.optipropose.com\n\n"
+        "Already a CordHR user? Ask your HR admin to add your number."
+    ),
+    # Stage 2 — they replied, they're curious
+    (
+        "Happy to tell you more \U0001F60A\n\n"
+        "CordHR works for any Nigerian business \u2014 retail, logistics, hospitality, "
+        "professional services. Your employees text *your* WhatsApp number and get "
+        "instant answers on leave, payslips, and HR policy.\n\n"
+        "Setup takes under 5 minutes. No IT team. No developer. "
+        "Connect your WhatsApp Business number and you're live.\n\n"
+        "Start free at \U0001F449 cordhr.optipropose.com"
+    ),
+    # Stage 3 — closing nudge
+    (
+        "When you're ready, here's where to start \U0001F680\n\n"
+        "\U0001F449 cordhr.optipropose.com\n\n"
+        "Free to try \u2014 no credit card needed. "
+        "Starter plan covers up to 30 employees at \u20A650,000/mo.\n\n"
+        "Questions? Email hi.kodehaus@gmail.com"
+    ),
+]
+
+DEMO_MSG = DEMO_STAGES[0]
+
 
 GREETING_MSG = (
     "Hi {name} 👋 I'm CordHR — your company HR assistant.\n\n"
@@ -177,7 +202,7 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
                     _record_demo_sent(from_phone)
                     send_message(
                         from_phone,
-                        f"Hi 👋 You're registered with {company_name}."
+                        f"Hi \U0001F44B You're registered with *{company_name}*.\n\n"
                         f"Please use your company's dedicated WhatsApp number to chat "
                         f"with CordHR. Ask your HR admin for the correct contact.",
                         tenant_id=None,  # use system token, not their tenant's OBO
@@ -358,14 +383,11 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
         name = employee.get("name") or "there"
         send_buttons(
             to_phone=from_phone,
-            body=f"Hi {name} 👋 I'm CordHR — your company HR assistant.\n\n"
-                 "What do you need?",
-
+            body=f"Hi {name} 👋 I'm CordHR — your company HR assistant.\n\nWhat do you need?",
             buttons=[
                 {"id": "leave",   "title": "📅 Leave request"},
                 {"id": "payslip", "title": "💰 My payslip"},
                 {"id": "policy",  "title": "📋 HR policy Q&A"},
-                {"id": "something_else", "title": "❓ Something else"}
             ],
             footer="CordHR · Powered by Optipropose Studio",
             tenant_id=employee["tenant_id"],
@@ -480,55 +502,137 @@ async def _process_message(from_phone: str, to_number_id: str, text: str):
 # Strangers who text the shared CordHR number get one demo message per 24hrs.
 # We track this in Supabase (demo_contacts table) to survive server restarts.
 
+# Max times we'll send the demo/redirect to a number within a 24hr rolling window.
+# Number of stages in the stranger conversation
+DEMO_MAX_PER_24H = len(DEMO_STAGES)
+
 def _should_send_demo(phone: str) -> bool:
-    """Return True if we haven't sent a demo to this phone in the last 24 hours."""
+    """
+    Return True if we haven't hit DEMO_MAX_PER_24H sends in the last 24 hours.
+    Tracks both time window AND count — so a number gets up to 3 messages
+    per 24hr rolling window, then silence until the window resets.
+    """
     from datetime import datetime, timezone, timedelta
     sb  = get_supabase()
     res = (
         sb.table("demo_contacts")
-        .select("last_demo_sent_at")
+        .select("last_demo_sent_at, message_count")
         .eq("phone", phone)
         .limit(1)
         .execute()
     )
     if not res.data:
-        return True
-    last = res.data[0].get("last_demo_sent_at")
+        return True  # never contacted — always send
+
+    row   = res.data[0]
+    last  = row.get("last_demo_sent_at")
+    count = row.get("message_count", 0)
+
     if not last:
         return True
+
     try:
-        last_dt = datetime.fromisoformat(last.replace("Z", "+00:00"))
-        return datetime.now(timezone.utc) - last_dt > timedelta(hours=24)
+        last_dt  = datetime.fromisoformat(last.replace("Z", "+00:00"))
+        now      = datetime.now(timezone.utc)
+        in_window = (now - last_dt) <= timedelta(hours=24)
+
+        if not in_window:
+            return True          # 24hr window has reset — allow again
+        return count < DEMO_MAX_PER_24H  # within window — check count
     except Exception:
         return True
 
 
 def _record_demo_sent(phone: str) -> None:
-    """Upsert the demo contact record with current timestamp."""
-    from datetime import datetime, timezone
+    """
+    Upsert demo contact — increment count if within 24hr window,
+    reset count to 1 if window has expired.
+    """
+    from datetime import datetime, timezone, timedelta
     sb  = get_supabase()
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(timezone.utc)
+
+    # Check existing record
+    res = (
+        sb.table("demo_contacts")
+        .select("last_demo_sent_at, message_count")
+        .eq("phone", phone)
+        .limit(1)
+        .execute()
+    )
+
+    if res.data:
+        row   = res.data[0]
+        last  = row.get("last_demo_sent_at")
+        count = row.get("message_count", 0)
+        try:
+            last_dt   = datetime.fromisoformat(last.replace("Z", "+00:00"))
+            in_window = (now - last_dt) <= timedelta(hours=24)
+            new_count = count + 1 if in_window else 1
+        except Exception:
+            new_count = 1
+    else:
+        new_count = 1
+
     sb.table("demo_contacts").upsert(
-        {"phone": phone, "last_demo_sent_at": now, "message_count": 1},
+        {
+            "phone":              phone,
+            "last_demo_sent_at":  now.isoformat(),
+            "message_count":      new_count,
+        },
         on_conflict="phone",
     ).execute()
-    print(f"[demo] Recorded demo sent to {phone} at {now}")
+    print(f"[demo] Recorded demo sent to {phone} — count {new_count}/{DEMO_MAX_PER_24H} in window")
 
 
 def send_demo_cta(to_phone: str) -> None:
     """
-    Send the CordHR demo pitch to a stranger who just texted the shared number.
+    Send the right stage of the CordHR stranger conversation.
 
-    Since the stranger initiated contact, the 24hr conversation window is open —
-    free-form text delivers immediately. No template needed here.
+    Stage 1 — full product pitch (first contact)
+    Stage 2 — engagement response (they replied, they're curious)
+    Stage 3 — closing nudge with pricing and signup link
+    After stage 3 — silence until 24hr window resets
 
-    The cordhr_demo template is reserved for RE-ENGAGEMENT only — when reaching
-    out AFTER the 24hr window has closed (Meta requires approved template then).
+    Since the stranger always texts first, the 24hr window is open —
+    plain text delivers immediately, no template approval needed.
     """
-    from services.whatsapp import send_message
-    print(f"[demo] Sending demo text to {to_phone}")
-    send_message(to_phone, DEMO_MSG, tenant_id=None)
-    print(f"[demo] Demo sent to {to_phone}")
+    from services.whatsapp import send_message, send_cta_url
+    from datetime import datetime, timezone, timedelta
+
+    sb  = get_supabase()
+    res = (
+        sb.table("demo_contacts")
+        .select("message_count")
+        .eq("phone", to_phone)
+        .limit(1)
+        .execute()
+    )
+
+    # message_count is updated BEFORE this function is called in _record_demo_sent
+    # so current count already reflects this send — use count-1 as stage index
+    count = res.data[0].get("message_count", 1) if res.data else 1
+    stage = min(count - 1, len(DEMO_STAGES) - 1)  # 0-indexed
+
+    msg = DEMO_STAGES[stage]
+    print(f"[demo] Sending stage {stage + 1}/{len(DEMO_STAGES)} to {to_phone}")
+
+    # Stage 3 gets a CTA URL button for maximum conversion
+    if stage == len(DEMO_STAGES) - 1:
+        try:
+            send_cta_url(
+                to_phone=to_phone,
+                body=msg,
+                button_label="Get started free",
+                url="https://cordhr.optipropose.com",
+            )
+        except Exception as e:
+            print(f"[demo] CTA button failed ({e}), falling back to text")
+            send_message(to_phone, msg, tenant_id=None)
+    else:
+        send_message(to_phone, msg, tenant_id=None)
+
+    print(f"[demo] Stage {stage + 1} sent to {to_phone}")
 
 
 
